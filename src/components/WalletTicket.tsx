@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { fmt, relativeDay } from '../lib/dates';
 import { ticketAccent } from '../lib/palette';
-import { KINDS, type Detail, type Stub } from '../lib/types';
+import { KINDS, type Detail, type Stub, type Ticket } from '../lib/types';
 import { useStore } from '../lib/store';
 import { colors, fonts } from '../theme';
 import Svg, { Path } from 'react-native-svg';
@@ -17,6 +17,8 @@ const NOTCH = 84;
 /** How far the notch's circle sits above the card's top edge. */
 const NOTCH_LIFT = 14;
 const RADIUS = 18;
+/** Height of the code or picture in the middle of a home screen card, so every card is the same size. */
+const MIDDLE = 140;
 
 /** The card's outline: a rounded rectangle with a semicircle bitten out of the top middle. */
 function outline(w: number, h: number) {
@@ -68,6 +70,14 @@ function fieldsFor(stub: Stub, index: number): Detail[] {
   return [...seating, ...(stub.time ? [{ label: 'Time', value: stub.time }] : []), ...rest];
 }
 
+/** Code size that fits MIDDLE once CodeView adds its white margin (a whole page is drawn 1.4× taller, a PDF417 0.55×). */
+function compactCodeSize(ticket: Ticket) {
+  const { code } = ticket;
+  if (code?.symbology === 'qr' && code.payload) return Math.floor(MIDDLE / 1.12);
+  if (!code || (code.symbology === 'linear' && ticket.pageUri)) return Math.floor((MIDDLE - 20) / 1.4);
+  return MIDDLE - 20;
+}
+
 /** A white ticket shaped like an Apple Wallet pass: notch at the top, name and date, picture, labelled details. */
 export function WalletTicket({ stub, index = 0, compact, onPress, hint, code, children, tear }: Props) {
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -109,11 +119,11 @@ export function WalletTicket({ stub, index = 0, compact, onPress, hint, code, ch
 
       {code ??
         (ticket?.code ? (
-          <View style={styles.codeSlot}>
-            <CodeView ticket={ticket} size={compact ? 124 : 180} />
+          <View style={[styles.codeSlot, compact && { height: MIDDLE }]}>
+            <CodeView ticket={ticket} size={compact ? compactCodeSize(ticket) : 180} />
           </View>
         ) : (
-          <View style={[styles.banner, { height: compact ? 124 : 132, backgroundColor: accent }]}>
+          <View style={[styles.banner, { height: compact ? MIDDLE : 132, backgroundColor: accent }]}>
             {cover ? (
               <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
             ) : (
@@ -192,7 +202,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: fonts.bodyBold, fontSize: 20, lineHeight: 24, color: colors.ink, marginTop: 2 },
   when: { alignItems: 'flex-end' },
   date: { fontFamily: fonts.body, fontSize: 24, lineHeight: 28, color: colors.inkSoft },
-  codeSlot: { alignItems: 'center', justifyContent: 'center' },
+  codeSlot: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   banner: { marginHorizontal: 18, borderRadius: 12, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   bannerText: { fontFamily: fonts.display, fontSize: 40, textTransform: 'uppercase', color: colors.ink },
   fields: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 18, paddingTop: 16, rowGap: 14, columnGap: 16 },

@@ -248,6 +248,7 @@ export function Home() {
 function NextCard({ stub }: { stub: Stub }) {
   return (
     <WalletTicket
+      compact
       stub={stub}
       ground={colors.ground}
       onPress={() => openStub(stub.id)}

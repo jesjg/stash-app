@@ -2,15 +2,15 @@ import { Image } from 'expo-image';
 import type { ReactNode } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { fmt, relativeDay } from '../lib/dates';
-import { ticketAccent, ticketDeep } from '../lib/palette';
+import { ticketAccent } from '../lib/palette';
 import { KINDS, type Detail, type Stub } from '../lib/types';
 import { useStore } from '../lib/store';
 import { colors, fonts } from '../theme';
 import { Holo } from './Holo';
 
-/** Details worth showing large in the strip, in this order (like Sec / Row / Seat on a Wallet pass). */
-const BIG = ['Section', 'Block', 'Stand', 'Row', 'Seat', 'Coach', 'Berth', 'Cabin', 'Deck', 'Platform', 'Gate', 'Terminal', 'Flight', 'Entrance', 'Door'];
-const SHORT: Record<string, string> = { Section: 'Sec', Platform: 'Plat', Entrance: 'Entr', Terminal: 'Term' };
+/** Seat-like details, shown first (like Sec / Row / Seat on a Wallet pass). */
+const SEATING = ['Section', 'Block', 'Stand', 'Row', 'Seat', 'Coach', 'Berth', 'Cabin', 'Deck', 'Platform', 'Gate', 'Terminal', 'Flight', 'Entrance', 'Door'];
+const SHORT: Record<string, string> = { Section: 'Sec', Ref: 'Booking ref' };
 const NOTCH = 84;
 
 type Props = {
@@ -19,103 +19,98 @@ type Props = {
   index?: number;
   /** Colour behind the card, used for the notch. */
   ground: string;
-  artHeight?: number;
+  /** Home screen card: fixed size, one row of details, tap to open. */
+  compact?: boolean;
   onPress?: () => void;
   /** Small text at the end of the bottom line, e.g. "Show code →". */
   hint?: string;
-  /** Shown under the strip (the code on the ticket screen). */
+  /** Shown at the bottom of the card (the code on the ticket screen). */
   children?: ReactNode;
   /** 0 → 1 drops the ticket away (used when archiving). */
   tear?: Animated.Value;
 };
 
-/** Split details into up to three short ones shown large, and the rest. */
-function splitDetails(details: Detail[]) {
-  const big: Detail[] = [];
-  for (const name of BIG) {
-    const d = details.find((x) => x.label === name && x.value.length <= 7);
-    if (d && big.length < 3) big.push(d);
+/** Seat-like codes first (only short codes like "EE", "7", "SCH-G", not words read by mistake), then time, then the rest. */
+function fieldsFor(stub: Stub, index: number): Detail[] {
+  if (stub.kind === 'stay') {
+    const st = stub.stay ?? {};
+    return [
+      stub.time ? { label: 'Check-in', value: stub.time } : null,
+      st.checkOutDate ? { label: 'Check-out', value: `${fmt.short(st.checkOutDate)}${st.checkOutTime ? ` ${st.checkOutTime}` : ''}` } : null,
+      st.address ? { label: 'Address', value: st.address.split(',')[0] } : null,
+    ].filter((d): d is Detail => !!d);
   }
-  return { big, rest: details.filter((d) => !big.includes(d)) };
+  const all = [...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company');
+  const isCode = (v: string) => v.length <= 8 && (/\d/.test(v) || v === v.toUpperCase());
+  const seating = SEATING.flatMap((name) => all.filter((d) => d.label === name && isCode(d.value)));
+  const rest = all.filter((d) => !seating.includes(d));
+  return [...seating, ...(stub.time ? [{ label: 'Time', value: stub.time }] : []), ...rest];
 }
 
-/** A ticket shaped like an Apple Wallet event pass: notch at the top, picture, dark strip with the seat. */
-export function WalletTicket({ stub, index = 0, ground, artHeight = 230, onPress, hint, children, tear }: Props) {
+/** A white ticket shaped like an Apple Wallet pass: notch at the top, name and date, picture, labelled details. */
+export function WalletTicket({ stub, index = 0, ground, compact, onPress, hint, children, tear }: Props) {
   const themePhoto = useStore((s) => s.settings.themePhoto);
   const holoAll = useStore((s) => s.settings.holoAll);
   const cover = stub.cover ?? themePhoto;
   const accent = ticketAccent(stub.color, colors.accent);
-  const deep = ticketDeep(stub.color, colors.night);
-  const isStay = stub.kind === 'stay';
   const count = stub.tickets.length;
   const company = stub.details?.find((d) => d.label === 'Company')?.value;
   const kind = KINDS.find((k) => k.id === stub.kind)?.label ?? 'Ticket';
-
-  const all = [...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company');
-  const stayBig: Detail[] = isStay
-    ? [
-        ...(stub.time ? [{ label: 'Check-in', value: stub.time }] : []),
-        ...(stub.stay?.checkOutDate ? [{ label: 'Until', value: `${Number(fmt.dayNum(stub.stay.checkOutDate))} ${fmt.mon(stub.stay.checkOutDate)}` }] : []),
-      ]
-    : [];
-  const { big, rest } = isStay ? { big: stayBig, rest: [] as Detail[] } : splitDetails(all);
-  const valueSize = big.length >= 3 ? 34 : 40;
-  const place = isStay ? stub.stay?.address?.split(',')[0] : undefined;
-  const lineOne = [place, ...rest.map((d) => (d.label === 'Ref' ? `Ref ${d.value}` : d.value))].filter(Boolean).join(' · ');
-  const lineTwo = [relativeDay(stub.date), count > 1 && !isStay ? `Ticket ${index + 1} of ${count}` : ''].filter(Boolean).join(' · ');
-  const onArt = cover ? colors.nightText : colors.ink;
+  const fields = fieldsFor(stub, index);
+  const shown = compact ? fields.slice(0, 3) : fields;
+  const footer = [relativeDay(stub.date), count > 1 && stub.kind !== 'stay' ? `Ticket ${index + 1} of ${count}` : ''].filter(Boolean).join(' · ');
 
   const card = (
-    <View style={[styles.card, { backgroundColor: deep }]}>
-      <View style={[styles.art, { height: artHeight, backgroundColor: accent }]}>
-        {cover && <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />}
-        {cover && <View style={styles.artShade} />}
-        {(stub.holo || holoAll) && <Holo />}
-        <View style={styles.head}>
-          <Text style={[styles.title, { color: onArt }, cover && styles.shadow]} numberOfLines={2}>
+    <View style={styles.card}>
+      <View style={[styles.head, compact && styles.headCompact]}>
+        <View style={styles.grow}>
+          <Text style={[styles.brand, { color: accent }]} numberOfLines={1}>
+            {company ?? kind}
+          </Text>
+          <Text style={styles.title} numberOfLines={compact ? 2 : 3}>
             {stub.title}
           </Text>
-          {/* Keep clear of the notch. */}
-          <View style={styles.gap} />
-          <View style={styles.when}>
-            <Text style={[styles.date, { color: onArt }, cover && styles.shadow]}>
-              {`${Number(fmt.dayNum(stub.date))} ${fmt.mon(stub.date).toUpperCase()}`}
-            </Text>
-            {stub.time ? <Text style={[styles.time, { color: onArt }, cover && styles.shadow]}>{stub.time}</Text> : null}
-          </View>
+        </View>
+        {/* Keep clear of the notch. */}
+        <View style={styles.notchGap} />
+        <View style={styles.when}>
+          <Text style={styles.fieldLabel}>{fmt.dow(stub.date)}</Text>
+          <Text style={styles.date}>{`${Number(fmt.dayNum(stub.date))} ${fmt.mon(stub.date)}`}</Text>
         </View>
       </View>
 
-      <View style={styles.strip}>
-        <View style={styles.stripTop}>
-          <Text style={styles.who} numberOfLines={2}>
+      <View style={[styles.banner, { height: compact ? 120 : 132, backgroundColor: accent }]}>
+        {cover ? (
+          <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+        ) : (
+          <Text style={styles.bannerText} numberOfLines={1} adjustsFontSizeToFit>
             {company ?? kind}
           </Text>
-          <View style={styles.bigRow}>
-            {big.map((d) => (
-              <View key={d.label} style={styles.bigField}>
-                <Text style={styles.bigLabel}>{SHORT[d.label] ?? d.label}</Text>
-                <Text style={[styles.bigValue, { fontSize: valueSize }]} numberOfLines={1} adjustsFontSizeToFit>
-                  {d.value}
-                </Text>
-              </View>
-            ))}
+        )}
+        {(stub.holo || holoAll) && <Holo />}
+      </View>
+
+      <View style={[styles.fields, compact && styles.fieldsCompact]}>
+        {shown.map((d, i) => (
+          <View key={`${d.label}-${i}`} style={[styles.field, compact ? styles.grow : styles.fieldWide]}>
+            <Text style={styles.fieldLabel} numberOfLines={1}>
+              {SHORT[d.label] ?? d.label}
+            </Text>
+            <Text style={[styles.fieldValue, d.label === 'Ref' && { fontFamily: fonts.mono, fontSize: 15 }]} numberOfLines={compact ? 1 : 3}>
+              {d.value}
+            </Text>
           </View>
-        </View>
-        {lineOne ? (
-          <Text style={styles.line} numberOfLines={1}>
-            {lineOne}
-          </Text>
-        ) : null}
-        <View style={styles.lineRow}>
-          <Text style={[styles.line, styles.grow]} numberOfLines={1}>
-            {lineTwo}
-          </Text>
-          {hint ? <Text style={[styles.hint, { color: accent }]}>{hint}</Text> : null}
-        </View>
+        ))}
       </View>
 
       {children}
+
+      <View style={styles.footer}>
+        <Text style={[styles.footerText, styles.grow]} numberOfLines={1}>
+          {footer}
+        </Text>
+        {hint ? <Text style={[styles.hint, { color: accent }]}>{hint}</Text> : null}
+      </View>
       <View style={[styles.notch, { backgroundColor: ground }]} />
     </View>
   );
@@ -153,27 +148,26 @@ export function WalletTicket({ stub, index = 0, ground, artHeight = 230, onPress
 }
 
 const styles = StyleSheet.create({
-  lift: { shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 4 },
-  card: { borderRadius: 18, overflow: 'hidden' },
-  art: { justifyContent: 'flex-start' },
-  artShade: { position: 'absolute', left: 0, right: 0, top: 0, height: 120, backgroundColor: 'rgba(0,0,0,0.32)' },
-  head: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 16 },
-  gap: { width: NOTCH - 16 },
-  title: { flex: 1, fontFamily: fonts.bodyBold, fontSize: 19, lineHeight: 23 },
-  when: { flex: 1, alignItems: 'flex-end', gap: 2 },
-  date: { fontFamily: fonts.bodyBold, fontSize: 19, lineHeight: 23 },
-  time: { fontFamily: fonts.mono, fontSize: 17 },
-  shadow: { textShadowColor: 'rgba(0,0,0,0.45)', textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 } },
-  strip: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 16, gap: 6 },
-  stripTop: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, minHeight: 56 },
-  who: { flexShrink: 1, fontFamily: fonts.bodyBold, fontSize: 15, lineHeight: 19, textTransform: 'uppercase', color: colors.nightSoft, paddingBottom: 6 },
-  bigRow: { flexDirection: 'row', gap: 20 },
-  bigField: { alignItems: 'flex-end', maxWidth: 120 },
-  bigLabel: { fontFamily: fonts.mono, fontSize: 13, color: colors.nightSoft },
-  bigValue: { fontFamily: fonts.bodyMedium, color: colors.nightText },
-  line: { fontFamily: fonts.mono, fontSize: 13, color: colors.nightText },
-  lineRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  lift: { shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  card: { backgroundColor: colors.paper, borderRadius: 18, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: '#DCDCD5' },
   grow: { flex: 1 },
+  head: { flexDirection: 'row', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 14 },
+  headCompact: { height: 100 },
+  notchGap: { width: NOTCH - 24 },
+  brand: { fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6, textTransform: 'uppercase' },
+  title: { fontFamily: fonts.bodyBold, fontSize: 20, lineHeight: 24, color: colors.ink, marginTop: 2 },
+  when: { alignItems: 'flex-end' },
+  date: { fontFamily: fonts.body, fontSize: 24, lineHeight: 28, color: colors.inkSoft },
+  banner: { marginHorizontal: 18, borderRadius: 12, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  bannerText: { fontFamily: fonts.display, fontSize: 40, textTransform: 'uppercase', color: colors.ink },
+  fields: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 18, paddingTop: 16, rowGap: 14, columnGap: 16 },
+  fieldsCompact: { flexWrap: 'nowrap', height: 62 },
+  field: { gap: 2 },
+  fieldWide: { minWidth: '28%', maxWidth: '100%' },
+  fieldLabel: { fontFamily: fonts.bodyBold, fontSize: 12, letterSpacing: 0.4, textTransform: 'uppercase', color: colors.ink },
+  fieldValue: { fontFamily: fonts.body, fontSize: 17, color: colors.inkSoft },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingTop: 10, paddingBottom: 16 },
+  footerText: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
   hint: { fontFamily: fonts.bodyBold, fontSize: 14 },
   notch: {
     position: 'absolute',

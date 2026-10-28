@@ -24,7 +24,6 @@ import { RoundButton } from '../../components/RoundButton';
 import { showToast } from '../../components/Toast';
 import { canSendAll, sendAll, sendTicket } from '../../lib/send';
 import { groupStubs, isArchived, isPast, removeStub, setUsed, useStore } from '../../lib/store';
-import { ticketAccent } from '../../lib/palette';
 import type { Stub } from '../../lib/types';
 import { haptic } from '../../lib/native';
 import { useMaxBrightness } from '../../lib/useMaxBrightness';
@@ -236,7 +235,7 @@ export default function TicketScreen() {
 
   return (
     <ScrollView
-      style={[styles.screen, { backgroundColor: ticketAccent(stub.color, colors.accent) }]}
+      style={styles.screen}
       contentContainerStyle={[styles.scrollBody, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}
     >
       <View style={[styles.topBar, { paddingHorizontal: H_PAD }]}>
@@ -359,11 +358,11 @@ function TicketCard({
   tear?: Animated.Value;
 }) {
   return (
-    <WalletTicket stub={stub} index={index} ground={ticketAccent(stub.color, colors.accent)} artHeight={170} tear={tear}>
+    <WalletTicket stub={stub} index={index} ground={colors.ground} tear={tear}>
       <View style={styles.codeArea}>
-        <View style={styles.codeBox}>{children}</View>
+        {children}
         <View style={styles.bright}>
-          <Icon name="sun" size={14} color={colors.nightSoft} stroke={2.2} />
+          <Icon name="sun" size={14} color={colors.inkSoft} stroke={2.2} />
           <Text style={styles.brightText}>Brightness boosted for scanning</Text>
         </View>
       </View>
@@ -372,7 +371,7 @@ function TicketCard({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.accent },
+  screen: { flex: 1, backgroundColor: colors.ground },
   scrollBody: { flexGrow: 1, gap: 16 },
   topBar: {
     flexDirection: 'row',
@@ -390,10 +389,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.paper,
   },
-  codeArea: { paddingHorizontal: 18, paddingBottom: 18, alignItems: 'center', gap: 12 },
-  codeBox: { backgroundColor: colors.paper, borderRadius: 14, padding: 14, alignSelf: 'stretch', alignItems: 'center' },
+  codeArea: { paddingHorizontal: 18, paddingTop: 22, alignItems: 'center', gap: 12 },
   bright: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  brightText: { fontFamily: fonts.mono, fontSize: 12, color: colors.nightSoft },
+  brightText: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   below: { gap: 8, alignItems: 'center', paddingHorizontal: H_PAD },
   swipeHint: {

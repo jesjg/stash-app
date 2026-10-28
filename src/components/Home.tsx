@@ -250,7 +250,6 @@ function NextCard({ stub }: { stub: Stub }) {
     <WalletTicket
       compact
       stub={stub}
-      ground={colors.ground}
       onPress={() => openStub(stub.id)}
       hint={stub.kind === 'stay' ? 'Open →' : 'Show code →'}
     />

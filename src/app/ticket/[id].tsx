@@ -358,13 +358,10 @@ function TicketCard({
   tear?: Animated.Value;
 }) {
   return (
-    <WalletTicket stub={stub} index={index} ground={colors.ground} tear={tear}>
-      <View style={styles.codeArea}>
-        {children}
-        <View style={styles.bright}>
-          <Icon name="sun" size={14} color={colors.inkSoft} stroke={2.2} />
-          <Text style={styles.brightText}>Brightness boosted for scanning</Text>
-        </View>
+    <WalletTicket stub={stub} index={index} tear={tear} code={children ? <View style={styles.codeArea}>{children}</View> : undefined}>
+      <View style={styles.bright}>
+        <Icon name="sun" size={14} color={colors.inkSoft} stroke={2.2} />
+        <Text style={styles.brightText}>Brightness boosted for scanning</Text>
       </View>
     </WalletTicket>
   );
@@ -389,8 +386,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.paper,
   },
-  codeArea: { paddingHorizontal: 18, paddingTop: 22, alignItems: 'center', gap: 12 },
-  bright: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  codeArea: { paddingHorizontal: 18, alignItems: 'center' },
+  bright: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 16 },
   brightText: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   below: { gap: 8, alignItems: 'center', paddingHorizontal: H_PAD },

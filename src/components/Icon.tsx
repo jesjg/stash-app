@@ -20,6 +20,7 @@ const paths = {
   bus: 'M5 4h14v13H5zM5 11h14M8 17v3M16 17v3',
   car: 'M3 13l2-5h14l2 5v4H3zM7 17v2.5M17 17v2.5M3 13h18',
   suitcase: 'M4 8h16v12H4zM9 8V5h6v3M4 13h16',
+  archive: 'M3 5h18v4H3zM5 9v10h14V9M10 13h4',
 } as const;
 
 type Name = keyof typeof paths | 'more';

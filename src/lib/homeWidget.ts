@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { addDays, daysBetween, dayKey, fmt, toDate } from './dates';
 import { ticketAccent, ticketDeep } from './palette';
-import { getState, isArchived } from './store';
+import { getState, isArchived, isPast } from './store';
 import { KINDS, type Stub } from './types';
 import { colors } from '../theme';
 import type { NextTicketProps } from '../live/NextTicketWidget';
@@ -42,7 +42,7 @@ export function syncHomeWidget() {
   if (!W) return;
   try {
     const live = getState()
-      .stubs.filter((s) => !s.sample && !isArchived(s))
+      .stubs.filter((s) => !s.sample && !isArchived(s) && !isPast(s))
       .sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '99').localeCompare(b.time ?? '99'));
     const today = dayKey();
     const entries = Array.from({ length: 14 }, (_, i) => {

@@ -10,7 +10,7 @@ All your tickets in one place, on the right day. For the QR tickets that won't g
 - On the day, a Live Activity pins the ticket (with its code) to the lock screen and Dynamic Island once Stubs has been opened that day; tapping the morning reminder counts.
 - A reminder at 8am on the day, or 2 hours before if there's a time. Tap it and the code is on screen at full brightness.
 - **Stays** (Airbnb, hotels, campsites): screenshot the check-in screens or paste the host's message (+ → Paste check-in details, or Share → Stash with text). Stash reads the address, check-in/out, door or key-box code, Wi-Fi and host's number into one card with Directions and Call. Stays stay on Today until check-out; the door code never goes on the lock screen.
-- Tidy by default: past tickets clear themselves after 30 days (or 1 week / 90 days / never). Swipe to delete, with undo.
+- Nothing archives or deletes itself: past tickets stay on the home screen under Past until you swipe left to archive them (with undo). Archive keeps them until you delete them.
 - Nothing leaves the phone. No account, no server.
 
 ## Stack
@@ -20,7 +20,7 @@ Expo SDK 57 · Expo Router · TypeScript. iPhone first.
 | Piece | Where |
 | --- | --- |
 | Screens | `src/app/` (home, ticket, add/edit, original, settings, share landing) |
-| Ticket store, auto-clear, undo | `src/lib/store.ts` (JSON in the app's Documents folder) |
+| Ticket store, archive, undo | `src/lib/store.ts` (JSON in the app's Documents folder) |
 | Import pipeline | `src/lib/importer.ts` |
 | Reminders | `src/lib/reminders.ts` |
 | On-device scanner (Swift: PDFKit + Vision codes and OCR) | `modules/stubs-scanner/` |

@@ -18,7 +18,7 @@ import { configureNotifications } from '../lib/reminders';
 import { syncHomeWidget } from '../lib/homeWidget';
 import { syncLockScreen } from '../lib/lockscreen';
 import { checkRecentScreenshots } from '../lib/screenshots';
-import { cleanUp, ensureReminders, load, useStore } from '../lib/store';
+import { ensureReminders, load, useStore } from '../lib/store';
 import { useOtaUpdates } from '../lib/useOtaUpdates';
 import { colors } from '../theme';
 
@@ -68,7 +68,6 @@ export default function RootLayout() {
     });
     const sub = AppState.addEventListener('change', (s) => {
       if (s !== 'active') return;
-      cleanUp();
       ensureReminders();
       checkRecentScreenshots();
       syncLockScreen();

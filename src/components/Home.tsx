@@ -16,7 +16,7 @@ import { RoundButton } from './RoundButton';
 import { showToast } from './Toast';
 import { dayKey, daysBetween, fmt, relativeDay } from '../lib/dates';
 import { summary } from '../lib/lockscreen';
-import { addSampleTicket, clearPast, groupStubs, removeStub, useStore } from '../lib/store';
+import { addSampleTicket, clearPast, groupStubs, removeStub, setUsed, useStore } from '../lib/store';
 import { KINDS, type Stub } from '../lib/types';
 import { useAddTicket } from '../lib/useAddTicket';
 import { iconFor, useTrips } from '../lib/useTrips';
@@ -52,11 +52,15 @@ function deleteWithUndo(stub: Stub) {
   showToast(`Deleted ${stub.title}`, { label: 'Undo', onPress: undo });
 }
 
+async function archiveWithUndo(stub: Stub) {
+  const undo = await setUsed(stub.id, true);
+  showToast(`Archived ${stub.title}`, { label: 'Undo', onPress: undo });
+}
+
 /** Everything in one list: tickets and stays, in date order. */
 export function Home() {
   const insets = useSafeAreaInsets();
   const stubs = useStore((s) => s.stubs);
-  const keepPastDays = useStore((s) => s.settings.keepPastDays);
   const today = dayKey();
   const [now, setNow] = useState(() => Date.now());
   const groups = useMemo(() => groupStubs(stubs, today, now), [stubs, today, now]);
@@ -94,7 +98,7 @@ export function Home() {
     }
   }, [introSeen]);
 
-  // Re-check every minute so tickets slide into Archive a few hours after they start.
+  // Re-check every minute so tickets slide into Past a few hours after they start.
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(t);
@@ -175,17 +179,31 @@ export function Home() {
           <View style={styles.section}>
             <View style={styles.rowBetween}>
               <Text style={label}>Coming up</Text>
-              <Text style={styles.hint}>Swipe left to delete</Text>
+              <Text style={styles.hint}>Swipe left to archive</Text>
             </View>
             {list.map((e) =>
               'trip' in e ? (
                 <TripRow key={e.trip.id} trip={e.trip} />
               ) : (
-                <SwipeToDelete key={e.stub.id} stub={e.stub}>
+                <SwipeRow key={e.stub.id} stub={e.stub} action="archive">
                   <StubRow stub={e.stub} countdown />
-                </SwipeToDelete>
+                </SwipeRow>
               ),
             )}
+          </View>
+        )}
+
+        {groups.past.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.rowBetween}>
+              <Text style={label}>Past</Text>
+              <Text style={styles.hint}>Swipe left to archive</Text>
+            </View>
+            {groups.past.map((s) => (
+              <SwipeRow key={s.id} stub={s} action="archive">
+                <StubRow stub={s} />
+              </SwipeRow>
+            ))}
           </View>
         )}
 
@@ -225,10 +243,7 @@ export function Home() {
                 style={styles.pastToggle}
                 hitSlop={8}
               >
-                <Text style={styles.pastText}>
-                  Archive · {groups.archive.length}
-                  {keepPastDays ? ` · clears after ${keepPastDays} days` : ''}
-                </Text>
+                <Text style={styles.pastText}>Archive · {groups.archive.length}</Text>
                 <Icon name={showPast ? 'chevronUp' : 'chevronDown'} size={16} color={colors.inkSoft} stroke={2.2} />
               </Pressable>
               <Pressable
@@ -236,7 +251,7 @@ export function Home() {
                 onPress={() =>
                   Alert.alert(
                     'Clear the archive?',
-                    `Deletes ${groups.archive.length} used or past item${groups.archive.length > 1 ? 's' : ''} for good.`,
+                    `Deletes ${groups.archive.length} archived item${groups.archive.length > 1 ? 's' : ''} for good.`,
                     [
                       { text: 'Cancel', style: 'cancel' },
                       { text: 'Clear', style: 'destructive', onPress: clearPast },
@@ -248,12 +263,16 @@ export function Home() {
                 <Text style={styles.outlineBtnText}>Clear</Text>
               </Pressable>
             </View>
-            {showPast &&
-              groups.archive.map((s) => (
-                <SwipeToDelete key={s.id} stub={s}>
-                  <StubRow stub={s} faded />
-                </SwipeToDelete>
-              ))}
+            {showPast && (
+              <>
+                <Text style={[styles.hint, styles.archiveHint]}>Swipe left to delete. Open one and tap Not used yet to bring it back.</Text>
+                {groups.archive.map((s) => (
+                  <SwipeRow key={s.id} stub={s} action="delete">
+                    <StubRow stub={s} faded />
+                  </SwipeRow>
+                ))}
+              </>
+            )}
           </View>
         )}
       </ScrollView>
@@ -403,16 +422,18 @@ function TripRow({ trip }: { trip: Trip }) {
   );
 }
 
-function SwipeToDelete({ stub, children }: { stub: Stub; children: React.ReactNode }) {
+/** Swipe left to archive (home list) or delete (Archive), with undo. */
+function SwipeRow({ stub, action, children }: { stub: Stub; action: 'archive' | 'delete'; children: React.ReactNode }) {
+  const archive = action === 'archive';
   return (
     <ReanimatedSwipeable
       friction={1.6}
       rightThreshold={60}
       overshootRight={false}
-      onSwipeableOpen={() => deleteWithUndo(stub)}
+      onSwipeableOpen={() => (archive ? archiveWithUndo(stub) : deleteWithUndo(stub))}
       renderRightActions={() => (
-        <View style={styles.deleteAction}>
-          <Icon name="trash" color={colors.paper} size={22} stroke={2.2} />
+        <View style={[styles.swipeAction, { backgroundColor: archive ? colors.ink : colors.danger }]}>
+          <Icon name={archive ? 'archive' : 'trash'} color={colors.paper} size={22} stroke={2.2} />
         </View>
       )}
     >
@@ -516,11 +537,10 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1, paddingHorizontal: 16, justifyContent: 'center', gap: 4 },
   rowTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.ink, textTransform: 'uppercase' },
   rowMeta: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
-  deleteAction: {
+  swipeAction: {
     width: 88,
     marginLeft: 10,
     borderRadius: 14,
-    backgroundColor: colors.danger,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -529,6 +549,7 @@ const styles = StyleSheet.create({
   pastBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   pastToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minHeight: 44 },
   pastText: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft, flexShrink: 1 },
+  archiveHint: { lineHeight: 16 },
   outlineBtn: { borderWidth: 1.5, borderColor: colors.ink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
   outlineBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.ink },
 

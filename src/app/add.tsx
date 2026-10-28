@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { StubForm } from '../components/StubForm';
 import { showToast } from '../components/Toast';
-import { discardDraft, isArchived, saveDraft, useStore } from '../lib/store';
+import { discardDraft, isPast, saveDraft, useStore } from '../lib/store';
 
 function leave() {
   if (router.canDismiss()) router.dismissAll();
@@ -41,8 +41,8 @@ export default function Add() {
           // Land on the tab it lives in.
           router.navigate('/');
           showToast(
-            isArchived(saved)
-              ? 'Saved to Archive: that date has passed.'
+            isPast(saved)
+              ? 'Saved under Past: that date has passed.'
               : saved.kind === 'stay'
                 ? saved.reminderId
                   ? 'Stay saved. Reminder set for check-in.'

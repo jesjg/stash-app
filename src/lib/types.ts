@@ -72,7 +72,7 @@ export type Stub = {
   details?: Detail[];
   reminderId?: string;
   createdAt: number;
-  /** Set when the person marks the ticket as used; it moves to Archive. */
+  /** Set when the person archives it (swipe or Used); it moves to Archive. Nothing else archives. */
   usedAt?: number;
   /** Check-in details when kind is 'stay'. */
   stay?: Stay;
@@ -97,8 +97,6 @@ export type Stub = {
 };
 
 export type Settings = {
-  /** Days after the event before a stub is deleted. 0 = keep forever. */
-  keepPastDays: number;
   /** Check new screenshots for ticket codes. undefined = not asked yet. */
   screenshots?: 'on' | 'off';
   /** Pin today's ticket to the lock screen as a Live Activity. */
@@ -113,4 +111,4 @@ export type Settings = {
   introSeen?: boolean;
 };
 
-export const DEFAULT_SETTINGS: Settings = { keepPastDays: 30, lockScreen: true };
+export const DEFAULT_SETTINGS: Settings = { lockScreen: true };

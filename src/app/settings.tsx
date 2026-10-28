@@ -17,15 +17,7 @@ import { pickCoverPhoto } from '../lib/pickers';
 import { ensureReminders, setSettings, setThemePhoto, useStore } from '../lib/store';
 import { colors, fonts, label } from '../theme';
 
-const KEEP = [
-  { days: 7, label: '1 week' },
-  { days: 30, label: '30 days' },
-  { days: 90, label: '90 days' },
-  { days: 0, label: 'Forever' },
-];
-
 export default function Settings() {
-  const keep = useStore((s) => s.settings.keepPastDays);
   const count = useStore((s) => s.stubs.length);
   const [reminders, setReminders] = useState<ReminderStatus | null>(null);
   useFocusEffect(
@@ -49,29 +41,6 @@ export default function Settings() {
         <RoundButton label="Close" onPress={() => router.back()} size={40} color={colors.paper}>
           <Icon name="close" size={18} color={colors.ink} />
         </RoundButton>
-      </View>
-
-      <View style={styles.block}>
-        <Text style={label}>Keep past tickets</Text>
-        <View style={styles.chips}>
-          {KEEP.map((k) => {
-            const on = k.days === keep;
-            return (
-              <Pressable
-                key={k.days}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                onPress={() => setSettings({ keepPastDays: k.days })}
-                style={[styles.chip, on && styles.chipOn]}
-              >
-                <Text style={[styles.chipText, on && styles.chipTextOn]}>{k.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Text style={styles.note}>
-          {keep ? `Tickets delete themselves ${keep} days after the event.` : 'Old tickets stay until you clear them.'}
-        </Text>
       </View>
 
       <View style={styles.block}>
@@ -233,11 +202,6 @@ const styles = StyleSheet.create({
   bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontFamily: fonts.display, fontSize: 40, textTransform: 'uppercase', color: colors.ink },
   block: { gap: 12 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1.5, borderColor: colors.ink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
-  chipOn: { backgroundColor: colors.ink },
-  chipText: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.ink },
-  chipTextOn: { color: colors.accent },
   note: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
   body: { fontFamily: fonts.body, fontSize: 16, lineHeight: 23, color: colors.ink },
   row: {

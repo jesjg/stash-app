@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { isArchived, useStore } from './store';
+import { isArchived, isPast, useStore } from './store';
 import { buildTrips, type Trip } from './trips';
 import type { Kind } from './types';
 
@@ -7,7 +7,7 @@ import type { Kind } from './types';
 export function useTrips(): Trip[] {
   const stubs = useStore((s) => s.stubs);
   const names = useStore((s) => s.tripNames);
-  return useMemo(() => buildTrips(stubs.filter((s) => !isArchived(s)), names), [stubs, names]);
+  return useMemo(() => buildTrips(stubs.filter((s) => !isArchived(s) && !isPast(s)), names), [stubs, names]);
 }
 
 export const tripOf = (trips: Trip[], stubId: string) => trips.find((t) => t.items.some((s) => s.id === stubId));

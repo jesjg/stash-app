@@ -111,7 +111,6 @@ export async function load() {
   const moved = JSON.stringify(fixed) !== JSON.stringify(stubs);
   set({ loaded: true, history, stubs: sortStubs(fixed), settings, seenShots, lockCard, tripNames });
   if (moved) persist();
-  cleanUp();
 }
 
 /** Point a stub's saved files at the app's current folder (see rebase). */
@@ -269,7 +268,7 @@ export async function applyReread(id: string, found: Extracted & { stayFound?: S
   return found.shared.length + found.perTicket.reduce((n, d) => n + d.length, 0) + stayCount;
 }
 
-/** Mark as used (moves to Archive) or bring it back. Returns an undo. */
+/** Archive it (swipe left, or Used) or bring it back. Returns an undo. */
 export async function setUsed(id: string, used: boolean): Promise<() => void> {
   const current = state.stubs.find((s) => s.id === id);
   if (!current) return () => {};
@@ -288,22 +287,9 @@ export async function setUsed(id: string, used: boolean): Promise<() => void> {
   };
 }
 
-/** Delete stubs older than the "keep past tickets" setting. */
-export function cleanUp() {
-  const days = state.settings.keepPastDays;
-  if (!days) return;
-  const cutoff = addDays(dayKey(), -days);
-  const expired = state.stubs.filter((s) => lastDay(s) < cutoff);
-  if (!expired.length) return;
-  expired.forEach((s) => deleteStubFiles(s.id));
-  set({ stubs: state.stubs.filter((s) => lastDay(s) >= cutoff) });
-  persist();
-}
-
 export function setSettings(patch: Partial<Settings>) {
   set({ settings: { ...state.settings, ...patch } });
   persist();
-  cleanUp();
 }
 
 /**
@@ -346,18 +332,22 @@ export function markShotsSeen(ids: string[]) {
 
 // ---------- selectors ----------
 
-/** How long after its start time a ticket stays "live" before moving to Archive. */
-export const ARCHIVE_AFTER_MS = 3 * 60 * 60 * 1000;
+/** How long after its start time a ticket stays "live" before it counts as past. */
+export const PAST_AFTER_MS = 3 * 60 * 60 * 1000;
 
-/** Used, or its day is over, or it started more than a few hours ago. */
 /** The last day a stub is needed: check-out for stays, otherwise its date. */
 export function lastDay(s: Stub): string {
   const out = s.kind === 'stay' ? s.stay?.checkOutDate : undefined;
   return out && out > s.date ? out : s.date;
 }
 
-export function isArchived(s: Stub, now = Date.now(), today = dayKey()): boolean {
-  if (s.usedAt) return true;
+/** Only the person archives a ticket (swipe left, or Used); past ones stay on the home screen. */
+export function isArchived(s: Stub): boolean {
+  return !!s.usedAt;
+}
+
+/** Its day is over, or it started more than a few hours ago. */
+export function isPast(s: Stub, now = Date.now(), today = dayKey()): boolean {
   if (s.kind === 'stay') {
     // Stays stay put (Wi-Fi, door code) until check-out, not 3 hours after check-in.
     const end = lastDay(s);
@@ -366,19 +356,24 @@ export function isArchived(s: Stub, now = Date.now(), today = dayKey()): boolean
     return false;
   }
   if (s.date < today) return true;
-  if (s.date === today && s.time) return toDate(s.date, s.time).getTime() + ARCHIVE_AFTER_MS < now;
+  if (s.date === today && s.time) return toDate(s.date, s.time).getTime() + PAST_AFTER_MS < now;
   return false;
 }
 
 export function groupStubs(stubs: Stub[], today = dayKey(), now = Date.now()) {
-  const live = stubs.filter((s) => !isArchived(s, now, today));
+  const kept = stubs.filter((s) => !isArchived(s));
+  const live = kept.filter((s) => !isPast(s, now, today));
   return {
     // Includes stays that started earlier and run to a later check-out.
     today: live.filter((s) => s.date <= today),
     upcoming: live.filter((s) => s.date > today),
-    /** Most recent first. */
+    /** Over but not archived yet: stays on the home screen. Most recent first. */
+    past: kept
+      .filter((s) => isPast(s, now, today))
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.time ?? '').localeCompare(a.time ?? '')),
+    /** Archived by the person. Most recently archived first. */
     archive: stubs
-      .filter((s) => isArchived(s, now, today))
+      .filter(isArchived)
       .sort((a, b) => (b.usedAt ?? 0) - (a.usedAt ?? 0) || b.date.localeCompare(a.date)),
   };
 }

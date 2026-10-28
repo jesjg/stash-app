@@ -26,7 +26,7 @@ import { RoundButton } from '../../components/RoundButton';
 import { showToast } from '../../components/Toast';
 import { fmt, relativeDay } from '../../lib/dates';
 import { canSendAll, sendAll, sendTicket } from '../../lib/send';
-import { groupStubs, isArchived, removeStub, setUsed, useStore } from '../../lib/store';
+import { groupStubs, isArchived, isPast, removeStub, setUsed, useStore } from '../../lib/store';
 import { ticketAccent } from '../../lib/palette';
 import { KINDS, type Stub } from '../../lib/types';
 import { haptic } from '../../lib/native';
@@ -45,12 +45,12 @@ export default function TicketScreen() {
   const pager = useRef<ScrollView>(null);
 
   // Swipe on to the next ticket or stay, in date order.
-  // Something opened from Archive stays on its own.
+  // Something opened from Past or Archive stays on its own.
   const { pages, start } = useMemo(() => {
     const opened = all.find((x) => x.id === id);
     if (!opened) return { pages: [] as { stub: Stub; index: number }[], start: 0 };
     const g = groupStubs(all);
-    const list = isArchived(opened) ? [opened] : [...g.today, ...g.upcoming];
+    const list = isArchived(opened) || isPast(opened) ? [opened] : [...g.today, ...g.upcoming];
     if (!list.some((s) => s.id === opened.id)) list.unshift(opened);
     const flat = list.flatMap((s) =>
       s.kind === 'stay' || !s.tickets.length ? [{ stub: s, index: 0 }] : s.tickets.map((_, index) => ({ stub: s, index })),
@@ -203,7 +203,7 @@ export default function TicketScreen() {
     <View style={styles.bottomRow}>
       <Pressable
         accessibilityRole="button"
-        accessibilityHint={stub.usedAt ? 'Moves it back to your upcoming tickets' : 'Moves it to Archive'}
+        accessibilityHint={stub.usedAt ? 'Moves it back to your home screen' : 'Moves it to Archive'}
         onPress={() => toggleUsed(stub)}
         style={({ pressed }) => [styles.solid, styles.grow, pressed && { opacity: 0.8 }]}
       >

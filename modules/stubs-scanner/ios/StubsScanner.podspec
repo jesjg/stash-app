@@ -13,7 +13,7 @@ Pod::Spec.new do |s|
   s.platforms      = {
     :ios => '16.4'
   }
-  s.source         = { git: 'https://github.com/imriverjones/stubs-app.git' }
+  s.source         = { git: 'https://github.com/jesjg/stubs-app.git' }
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'

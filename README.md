@@ -30,7 +30,7 @@ Expo SDK 57 · Expo Router · TypeScript. iPhone first.
 | Link capture | `src/app/web.tsx` |
 | Design tokens (Tear-off) | `src/theme.ts` |
 
-Receiving shares uses `expo-sharing`'s share extension (experimental on iOS in SDK 57). It needs the App Group `group.com.imriverjones.stubs`; EAS sets this up when it creates the credentials.
+Receiving shares uses `expo-sharing`'s share extension (experimental on iOS in SDK 57). It needs the App Group `group.com.jesjg.stash`; EAS sets this up when it creates the credentials.
 
 ## Running it (no Mac needed)
 

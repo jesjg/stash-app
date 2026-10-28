@@ -205,11 +205,11 @@ export default function Settings() {
         <Text style={styles.body}>
           Your tickets never leave this phone unless you send them. No account, no server. Codes are read on-device.
         </Text>
-        <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://imriverjones.github.io/stubs-app/privacy/')} style={styles.row}>
+        <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://jesjg.github.io/stubs-app/privacy/')} style={styles.row}>
           <Text style={styles.rowText}>Privacy policy</Text>
           <Icon name="arrow" size={16} color={colors.ink} />
         </Pressable>
-        <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://imriverjones.github.io/stubs-app/support/')} style={styles.row}>
+        <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://jesjg.github.io/stubs-app/support/')} style={styles.row}>
           <Text style={styles.rowText}>Help and support</Text>
           <Icon name="arrow" size={16} color={colors.ink} />
         </Pressable>

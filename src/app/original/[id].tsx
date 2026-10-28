@@ -11,7 +11,8 @@ import { colors, fonts } from '../../theme';
 /** Every page as it arrived. Swipe between pages; pinch or double-tap to zoom. */
 export default function Original() {
   const { id, page } = useLocalSearchParams<{ id: string; page?: string }>();
-  const stub = useStore((s) => s.stubs.find((x) => x.id === id));
+  // Also opened from the confirm screen, before the ticket is saved.
+  const stub = useStore((s) => s.stubs.find((x) => x.id === id) ?? (s.draft?.id === id ? s.draft : undefined));
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const pages = stub ? (stub.pageUris.length ? stub.pageUris : [...new Set(stub.tickets.map((t) => t.pageUri))]).filter(Boolean) : [];

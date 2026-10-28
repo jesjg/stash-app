@@ -1,3 +1,5 @@
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import DateTimePicker, { DateTimePickerAndroid, type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Toggle } from './Toggle';
 import { useState } from 'react';
@@ -60,6 +62,9 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
   const onOutTime = (_: DateTimePickerEvent, d?: Date) => d && setStayField('checkOutTime', timeKey(d));
   const first = stub.tickets[0];
   const count = stub.tickets.length;
+  // Show the whole ticket while checking the details (the code alone hides them); tap to zoom.
+  const page = stub.pageUris.find(Boolean) ?? first?.pageUri;
+  const [pageAspect, setPageAspect] = useState(0.71);
   // Shared details plus the first ticket's own (seat etc.); with several tickets, note that seats vary.
   const readDetails = [...(first?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company');
   // The company is its own field: it becomes the name badge on the ticket.
@@ -123,7 +128,26 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
               />
             </View>
           }
-          bottom={isStay ? undefined : <View style={styles.cardBottom}>{first && <CodeView ticket={first} size={150} />}</View>}
+          bottom={
+            isStay ? undefined : page ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Your ticket. Opens it full screen to zoom."
+                onPress={() => router.push({ pathname: '/original/[id]', params: { id: stub.id } })}
+                style={({ pressed }) => [styles.cardBottom, pressed && { opacity: 0.85 }]}
+              >
+                <Image
+                  source={{ uri: page }}
+                  style={[styles.page, { aspectRatio: pageAspect }]}
+                  contentFit="contain"
+                  onLoad={(e) => e.source.width && e.source.height && setPageAspect(e.source.width / e.source.height)}
+                />
+                <Text style={styles.pageHint}>{stub.pageUris.length > 1 ? `Tap to zoom · ${stub.pageUris.length} pages` : 'Tap to zoom'}</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.cardBottom}>{first && <CodeView ticket={first} size={150} />}</View>
+            )
+          }
         />
 
         {readDetails.length > 0 && (
@@ -355,6 +379,8 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   cardBottom: { padding: 18, alignItems: 'center' },
+  page: { width: '100%', maxHeight: 460, borderRadius: 8, backgroundColor: colors.paper },
+  pageHint: { fontFamily: fonts.mono, fontSize: 11, color: colors.inkFaint, paddingTop: 10 },
   field: { gap: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { borderWidth: 1.5, borderColor: colors.ink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },

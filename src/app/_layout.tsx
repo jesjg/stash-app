@@ -92,7 +92,6 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.ground } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="ticket/[id]" options={{ animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="trip/[id]" />
         <Stack.Screen name="add" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="original/[id]" options={{ presentation: 'fullScreenModal' }} />

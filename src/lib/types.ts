@@ -88,10 +88,6 @@ export type Stub = {
   link?: string;
   /** A demo ticket from the empty screen: no files, removed when a real ticket is saved. */
   sample?: boolean;
-  /** Set when the person put this in a trip themselves (or fixed an automatic one): grouped by this id. */
-  tripId?: string;
-  /** Set when the person took it out of a trip: never grouped automatically. */
-  noTrip?: boolean;
   /** Which fields were read off the ticket (shown as a hint on the confirm screen). */
   autofill?: ('date' | 'time' | 'title' | 'kind')[];
 };

@@ -3,7 +3,6 @@ import { addDays, dayKey, daysBetween, toDate } from './dates';
 import { File } from 'expo-file-system';
 import { dbFile, deleteStubFiles, newId, rebase, rootDir, stubDir } from './files';
 import type { Extracted } from './extract';
-import type { Trip } from './trips';
 import type { StayFound } from './stay';
 import { cancelReminder, ensurePermission, reminderStatus, scheduleReminder } from './reminders';
 import { DEFAULT_SETTINGS, type Settings, type Stub } from './types';
@@ -20,8 +19,6 @@ type State = {
   lockCard: { activityId: string; stubId: string } | null;
   /** A light record of every ticket ever saved (no files), kept after auto-clear for Year in tickets. */
   history: HistoryItem[];
-  /** Names people gave their trips, by trip id. */
-  tripNames: Record<string, string>;
 };
 
 export type HistoryItem = { id: string; title: string; kind: Stub['kind']; date: string; nights?: number; place?: string };
@@ -47,7 +44,7 @@ function toHistory(s: Stub): HistoryItem {
   return { id: s.id, title: s.title, kind: s.kind, date: s.date, nights, place: placeOf(s) };
 }
 
-let state: State = { loaded: false, stubs: [], settings: DEFAULT_SETTINGS, draft: null, seenShots: [], lockCard: null, history: [], tripNames: {} };
+let state: State = { loaded: false, stubs: [], settings: DEFAULT_SETTINGS, draft: null, seenShots: [], lockCard: null, history: [] };
 const listeners = new Set<() => void>();
 
 function set(patch: Partial<State>) {
@@ -77,7 +74,7 @@ export const getState = () => state;
 function persist() {
   try {
     dbFile().write(
-      JSON.stringify({ v: 1, stubs: state.stubs, settings: state.settings, seenShots: state.seenShots, lockCard: state.lockCard, history: state.history, tripNames: state.tripNames }),
+      JSON.stringify({ v: 1, stubs: state.stubs, settings: state.settings, seenShots: state.seenShots, lockCard: state.lockCard, history: state.history }),
     );
   } catch (e) {
     console.warn('Could not save stubs', e);
@@ -91,7 +88,6 @@ export async function load() {
   let seenShots: string[] = [];
   let lockCard: State['lockCard'] = null;
   let history: HistoryItem[] = [];
-  let tripNames: Record<string, string> = {};
   try {
     const file = dbFile();
     if (file.exists) {
@@ -102,18 +98,22 @@ export async function load() {
       seenShots = Array.isArray(data.seenShots) ? data.seenShots : [];
       lockCard = data.lockCard ?? null;
       history = Array.isArray(data.history) ? data.history : [];
-      tripNames = data.tripNames && typeof data.tripNames === 'object' ? data.tripNames : {};
     }
   } catch (e) {
     console.warn('Could not read stubs', e);
   }
-  const fixed = stubs.map(rebaseStub).map(dropDuplicateBarcodes).map(dropAutoCover);
+  const fixed = stubs.map(dropTrip).map(rebaseStub).map(dropDuplicateBarcodes).map(dropAutoCover);
   const moved = JSON.stringify(fixed) !== JSON.stringify(stubs);
-  set({ loaded: true, history, stubs: sortStubs(fixed), settings, seenShots, lockCard, tripNames });
+  set({ loaded: true, history, stubs: sortStubs(fixed), settings, seenShots, lockCard });
   if (moved) persist();
 }
 
-/** Point a stub's saved files at the app's current folder (see rebase). */
+/** Trips were removed: forget which trip a ticket was put in. */
+function dropTrip(s: Stub): Stub {
+  const { tripId: _trip, noTrip: _no, ...rest } = s as Stub & { tripId?: string; noTrip?: boolean };
+  return rest;
+}
+
 /** Automatic (Wikipedia) covers were removed: delete those, keep photos people chose. */
 function dropAutoCover(s: Stub): Stub {
   if (!s.coverCredit) return s;
@@ -135,6 +135,7 @@ function dropDuplicateBarcodes(s: Stub): Stub {
   return tickets.length === s.tickets.length || !tickets.length ? s : { ...s, tickets };
 }
 
+/** Point a stub's saved files at the app's current folder (see rebase). */
 function rebaseStub(s: Stub): Stub {
   return {
     ...s,
@@ -464,54 +465,4 @@ export async function setThemePhoto(photoUri: string | null) {
   }
   set({ settings: { ...state.settings, themePhoto } });
   persist();
-}
-
-// ---------- trips ----------
-// Automatic trips have no stored record. As soon as someone changes one, its items get the trip's
-// id (tripId) so the grouping stays exactly as they left it.
-
-function patchStubs(change: (s: Stub) => Stub | undefined) {
-  set({ stubs: sortStubs(state.stubs.map((s) => change(s) ?? s)) });
-  persist();
-}
-
-const pin = (trip: Trip) => new Set(trip.items.map((s) => s.id));
-
-export function renameTrip(trip: Trip, name: string) {
-  const ids = pin(trip);
-  set({ tripNames: { ...state.tripNames, [trip.id]: name.trim() } });
-  patchStubs((s) => (ids.has(s.id) ? { ...s, tripId: trip.id, noTrip: undefined } : undefined));
-}
-
-export function addToTrip(stubId: string, trip: Trip) {
-  const ids = pin(trip);
-  ids.add(stubId);
-  patchStubs((s) => (ids.has(s.id) ? { ...s, tripId: trip.id, noTrip: undefined } : undefined));
-}
-
-export function removeFromTrip(stubId: string, trip: Trip) {
-  const ids = pin(trip);
-  patchStubs((s) =>
-    s.id === stubId ? { ...s, tripId: undefined, noTrip: true } : ids.has(s.id) ? { ...s, tripId: trip.id, noTrip: undefined } : undefined,
-  );
-}
-
-export function newTrip(stubId: string, name: string): string {
-  const id = `trip:${newId()}`;
-  set({ tripNames: { ...state.tripNames, [id]: name.trim() || 'Trip' } });
-  patchStubs((s) => (s.id === stubId ? { ...s, tripId: id, noTrip: undefined } : undefined));
-  return id;
-}
-
-/** Everything in `from` joins `into`, keeping `into`'s name. */
-export function mergeTrips(into: Trip, from: Trip) {
-  const ids = new Set([...pin(into), ...pin(from)]);
-  set({ tripNames: { ...state.tripNames, [into.id]: state.tripNames[into.id] ?? into.name } });
-  patchStubs((s) => (ids.has(s.id) ? { ...s, tripId: into.id, noTrip: undefined } : undefined));
-}
-
-/** Not a trip after all: its items go back to the list and aren't grouped again. */
-export function ungroupTrip(trip: Trip) {
-  const ids = pin(trip);
-  patchStubs((s) => (ids.has(s.id) ? { ...s, tripId: undefined, noTrip: true } : undefined));
 }

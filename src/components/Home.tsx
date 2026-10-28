@@ -1,26 +1,21 @@
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from './Icon';
-import { CompanyMark, companyOf } from './CompanyMark';
-import { Holo } from './Holo';
+import { companyOf } from './CompanyMark';
 import { Logo } from './Logo';
-import { ticketAccent, ticketDeep } from '../lib/palette';
 import { NotifyPrompt } from './NotifyPrompt';
 import { Perforated } from './Perforated';
+import { WalletTicket } from './WalletTicket';
 import { ScreenshotCards } from './ScreenshotCards';
 import { RoundButton } from './RoundButton';
 import { showToast } from './Toast';
 import { dayKey, daysBetween, fmt, relativeDay } from '../lib/dates';
-import { summary } from '../lib/lockscreen';
 import { addSampleTicket, clearPast, groupStubs, removeStub, setUsed, useStore } from '../lib/store';
 import { KINDS, type Stub } from '../lib/types';
 import { useAddTicket } from '../lib/useAddTicket';
-import { iconFor, useTrips } from '../lib/useTrips';
-import { tripDates, tripNights, type Trip } from '../lib/trips';
 import { colors, fonts, label } from '../theme';
 
 const kindLabel = (s: Stub) => KINDS.find((k) => k.id === s.kind)?.label ?? 'Ticket';
@@ -32,17 +27,6 @@ const ticketCount = (s: Stub) =>
     : s.tickets.length > 1
       ? `${s.tickets.length} tickets`
       : '1 ticket';
-/** Under the title on the home card. */
-function subLine(s: Stub, when: string) {
-  if (s.kind === 'stay') {
-    const place = s.stay?.address?.split(',')[0];
-    const checkIn = s.date < dayKey() ? 'Staying now' : `${when}${s.time ? ` · check-in ${s.time}` : ''}`;
-    return [checkIn, place].filter(Boolean).join(' · ');
-  }
-  return [s.time ? `${when} · ${s.time}` : when, summary([...(s.tickets[0]?.details ?? []), ...(s.details ?? [])])]
-    .filter(Boolean)
-    .join(' · ');
-}
 const NEXT_COUNT = 5;
 const CARD_GAP = 12;
 const openStub = (id: string) => router.push({ pathname: '/ticket/[id]', params: { id } });
@@ -73,22 +57,6 @@ export function Home() {
   const next = live.slice(0, NEXT_COUNT);
   // Everything ahead, counting down (plus anything today that didn't fit in the carousel).
   const comingUp = useMemo(() => live.filter((s, i) => s.date > today || i >= NEXT_COUNT), [live, today]);
-  // Trips take one row for all their parts, placed where their first part falls.
-  const trips = useTrips();
-  const list = useMemo(() => {
-    const out: ({ trip: Trip } | { stub: Stub })[] = [];
-    const shown = new Set<string>();
-    const later = new Set(comingUp.map((s) => s.id));
-    for (const s of live) {
-      const trip = trips.find((t) => t.items.some((x) => x.id === s.id));
-      if (trip) {
-        if (!shown.has(trip.id)) out.push({ trip });
-        shown.add(trip.id);
-      } else if (later.has(s.id)) out.push({ stub: s });
-    }
-    return out;
-  }, [live, comingUp, trips]);
-
   // First launch: show how Stash works.
   const introSeen = useStore((s) => s.settings.introSeen);
   useEffect(() => {
@@ -175,21 +143,17 @@ export function Home() {
           </View>
         )}
 
-        {list.length > 0 && (
+        {comingUp.length > 0 && (
           <View style={styles.section}>
             <View style={styles.rowBetween}>
               <Text style={label}>Coming up</Text>
               <Text style={styles.hint}>Swipe left to archive</Text>
             </View>
-            {list.map((e) =>
-              'trip' in e ? (
-                <TripRow key={e.trip.id} trip={e.trip} />
-              ) : (
-                <SwipeRow key={e.stub.id} stub={e.stub} action="archive">
-                  <StubRow stub={e.stub} countdown />
-                </SwipeRow>
-              ),
-            )}
+            {comingUp.map((s) => (
+              <SwipeRow key={s.id} stub={s} action="archive">
+                <StubRow stub={s} countdown />
+              </SwipeRow>
+            ))}
           </View>
         )}
 
@@ -282,63 +246,13 @@ export function Home() {
 
 
 function NextCard({ stub }: { stub: Stub }) {
-  const themePhoto = useStore((s) => s.settings.themePhoto);
-  const holoAll = useStore((s) => s.settings.holoAll);
-  // Its own photo first, then the background photo set for all tickets.
-  const cover = stub.cover ?? themePhoto;
-  const when = relativeDay(stub.date);
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${stub.title}, ${when}${stub.time ? ` at ${stub.time}` : ''}. Show code.`}
+    <WalletTicket
+      stub={stub}
+      ground={colors.ground}
       onPress={() => openStub(stub.id)}
-      style={({ pressed }) => pressed && { transform: [{ scale: 0.985 }] }}
-    >
-      <Perforated
-        color={ticketDeep(stub.color, colors.night)}
-        ground={colors.ground}
-        rule={colors.nightRule}
-        top={
-          <View style={styles.todayTop}>
-            {cover && (
-              <>
-                <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
-                <View style={[StyleSheet.absoluteFill, styles.coverShade]} />
-              </>
-            )}
-            {(stub.holo || holoAll) && <Holo />}
-            <View style={styles.rowBetween}>
-              <View style={[styles.tag, { backgroundColor: ticketAccent(stub.color, colors.accent) }]}>
-                <Text style={styles.tagText}>{kindLabel(stub)}</Text>
-              </View>
-              {companyOf(stub) ? (
-                <CompanyMark small onDark name={companyOf(stub)!} accent={ticketAccent(stub.color, colors.accent)} />
-              ) : (
-                <Text style={styles.todayMeta}>{ticketCount(stub)}</Text>
-              )}
-            </View>
-            {/* Same height for every card: long names shrink to fit two lines, details stay on one. */}
-            <View style={styles.todayTitleBox}>
-              <Text style={styles.todayTitle} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.55}>
-                {stub.title}
-              </Text>
-            </View>
-            <Text style={styles.todaySub} numberOfLines={1}>
-              {subLine(stub, when)}
-            </Text>
-          </View>
-        }
-        bottom={
-          <View style={[styles.rowBetween, styles.todayBottom]}>
-            <Text style={styles.todayMeta}>{stub.kind === 'stay' ? 'Address, door code, Wi-Fi' : 'Tap to show code'}</Text>
-            <View style={[styles.pill, { backgroundColor: ticketAccent(stub.color, colors.accent) }]}>
-              <Text style={styles.pillText}>{stub.kind === 'stay' ? 'Open' : 'Show code'}</Text>
-              <Icon name="arrow" size={16} color={colors.ink} />
-            </View>
-          </View>
-        }
-      />
-    </Pressable>
+      hint={stub.kind === 'stay' ? 'Open →' : 'Show code →'}
+    />
   );
 }
 
@@ -375,48 +289,6 @@ function StubRow({ stub, faded, countdown }: { stub: Stub; faded?: boolean; coun
         <Text style={styles.rowMeta} numberOfLines={1}>
           {meta}
         </Text>
-      </View>
-    </Pressable>
-  );
-}
-
-/** One row for a whole trip: where, when, and what's booked. */
-function TripRow({ trip }: { trip: Trip }) {
-  const today = dayKey();
-  const days = daysBetween(today, trip.start);
-  const away = trip.start <= today;
-  const nights = tripNights(trip);
-  const kinds = [...new Set(trip.items.map((s) => iconFor(s.kind)))];
-  const accent = ticketAccent(trip.items[0]?.color, colors.accent);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Trip to ${trip.name}, ${tripDates(trip.start, trip.end)}, ${trip.items.length} bookings`}
-      onPress={() => router.push({ pathname: '/trip/[id]', params: { id: trip.id } })}
-      style={({ pressed }) => [styles.tripRow, pressed && { opacity: 0.85 }]}
-    >
-      <View style={[styles.rowDate, styles.tripDate, { backgroundColor: accent }]}>
-        <Text style={[styles.rowDay, days > 99 && { fontSize: 24 }]}>{away ? 'NOW' : days}</Text>
-        <Text style={[styles.rowDow, { color: colors.ink }]}>{away ? 'AWAY' : days === 1 ? 'DAY' : 'DAYS'}</Text>
-      </View>
-      <View style={styles.tripBody}>
-        <Text style={styles.tripKicker}>Trip</Text>
-        <Text style={styles.tripName} numberOfLines={1}>
-          {trip.name}
-        </Text>
-        <Text style={styles.rowMeta} numberOfLines={1}>
-          {[tripDates(trip.start, trip.end), nights ? `${nights} night${nights === 1 ? '' : 's'}` : '', `${trip.items.length} booked`].filter(Boolean).join(' · ')}
-        </Text>
-        <View style={styles.tripIcons}>
-          {kinds.map((k) => (
-            <View key={k} style={styles.tripIcon}>
-              <Icon name={k} size={14} color={colors.ink} stroke={2.2} />
-            </View>
-          ))}
-        </View>
-      </View>
-      <View style={styles.tripArrow}>
-        <Icon name="arrow" size={18} color={colors.ink} />
       </View>
     </Pressable>
   );
@@ -497,38 +369,11 @@ const styles = StyleSheet.create({
   dotOn: { width: 20, backgroundColor: colors.ink },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
 
-  todayTop: { padding: 20, paddingBottom: 18, gap: 10, height: 236, justifyContent: 'space-between' },
-  todayTitleBox: { flex: 1, justifyContent: 'center' },
-  todayBottom: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 18 },
-  tag: { backgroundColor: colors.accent, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4 },
-  tagText: { fontFamily: fonts.monoBold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', color: colors.ink },
-  coverShade: { backgroundColor: 'rgba(17,17,17,0.5)' },
-  todayTitle: { fontFamily: fonts.display, fontSize: 40, textTransform: 'uppercase', color: colors.nightText },
-  todaySub: { fontFamily: fonts.mono, fontSize: 13, color: '#D6D6CF' },
-  todayMeta: { fontFamily: fonts.mono, fontSize: 12, color: colors.nightSoft },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.accent,
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  },
-  pillText: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.ink },
 
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile: { flexBasis: '47%', flexGrow: 1, backgroundColor: colors.paper, borderRadius: 14, padding: 14, gap: 10, minHeight: 92 },
   tileIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: colors.ground, alignItems: 'center', justifyContent: 'center' },
   tileText: { fontFamily: fonts.bodyBold, fontSize: 14, lineHeight: 18, color: colors.ink },
-  tripRow: { backgroundColor: colors.paper, borderRadius: 14, flexDirection: 'row', alignItems: 'stretch', minHeight: 112, overflow: 'hidden' },
-  tripDate: { borderTopLeftRadius: 14, borderBottomLeftRadius: 14 },
-  tripBody: { flex: 1, paddingHorizontal: 16, paddingVertical: 12, justifyContent: 'center', gap: 4 },
-  tripKicker: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 1.4, textTransform: 'uppercase', color: colors.inkSoft },
-  tripName: { fontFamily: fonts.display, fontSize: 28, lineHeight: 32, textTransform: 'uppercase', color: colors.ink },
-  tripIcons: { flexDirection: 'row', gap: 6, marginTop: 4 },
-  tripIcon: { width: 26, height: 26, borderRadius: 8, backgroundColor: colors.ground, alignItems: 'center', justifyContent: 'center' },
-  tripArrow: { justifyContent: 'center', paddingRight: 16 },
   row: { backgroundColor: colors.paper, borderRadius: 14, flexDirection: 'row', alignItems: 'stretch', height: 76 },
   rowDate: { width: 74, alignItems: 'center', justifyContent: 'center' },
   rowDay: { fontFamily: fonts.display, fontSize: 30, color: colors.ink },

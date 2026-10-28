@@ -17,22 +17,17 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CodeView } from '../../components/CodeView';
-import { CompanyMark } from '../../components/CompanyMark';
-import { Holo } from '../../components/Holo';
 import { StayCard } from '../../components/StayCard';
 import { Icon } from '../../components/Icon';
-import { Perforated } from '../../components/Perforated';
+import { WalletTicket } from '../../components/WalletTicket';
 import { RoundButton } from '../../components/RoundButton';
 import { showToast } from '../../components/Toast';
-import { fmt, relativeDay } from '../../lib/dates';
 import { canSendAll, sendAll, sendTicket } from '../../lib/send';
 import { groupStubs, isArchived, isPast, removeStub, setUsed, useStore } from '../../lib/store';
 import { ticketAccent } from '../../lib/palette';
-import { KINDS, type Stub } from '../../lib/types';
+import type { Stub } from '../../lib/types';
 import { haptic } from '../../lib/native';
 import { useMaxBrightness } from '../../lib/useMaxBrightness';
-import { chooseTripFor, confirmRemove } from '../../lib/tripActions';
-import { tripOf, useTrips } from '../../lib/useTrips';
 import { colors, fonts } from '../../theme';
 
 const H_PAD = 20;
@@ -67,7 +62,6 @@ export default function TicketScreen() {
   const at = Math.min(current ?? start, Math.max(0, pages.length - 1));
   const stub = pages[at]?.stub;
   const page = pages[at]?.index ?? 0;
-  const trips = useTrips();
   const stubIds = useMemo(() => [...new Set(pages.map((p) => p.stub.id))], [pages]);
   const positioned = useRef(false);
   const [tear] = useState(() => new Animated.Value(0));
@@ -92,7 +86,6 @@ export default function TicketScreen() {
   const codeSize = Math.min(cardWidth - 80, 300);
 
   const more = () => {
-    const trip = tripOf(trips, stub.id);
     const sample = !!stub.sample;
     const isStay = stub.kind === 'stay';
     const items: { label: string; run: () => void; destructive?: boolean }[] = [
@@ -133,14 +126,6 @@ export default function TicketScreen() {
             },
           ]
         : []),
-      ...(sample
-        ? []
-        : trip
-          ? [
-              { label: `Open trip: ${trip.name}`, run: () => router.push({ pathname: '/trip/[id]', params: { id: trip.id } }) },
-              { label: 'Take out of trip', run: () => confirmRemove(stub, trip, () => showToast('Taken out of the trip')) },
-            ]
-          : [{ label: 'Add to trip…', run: () => chooseTripFor(stub, trips, () => showToast('Added to the trip')) }]),
       {
         label: 'Edit details',
         run: () => router.push({ pathname: '/edit/[id]', params: { id: stub.id } }),
@@ -361,15 +346,6 @@ export default function TicketScreen() {
   );
 }
 
-/** Long names step down in size instead of being cut off. */
-function titleSize(title: string) {
-  const n = title.length;
-  if (n <= 18) return { fontSize: 38 };
-  if (n <= 32) return { fontSize: 32 };
-  if (n <= 48) return { fontSize: 27 };
-  return { fontSize: 23 };
-}
-
 function TicketCard({
   stub,
   index,
@@ -382,81 +358,20 @@ function TicketCard({
   children: React.ReactNode;
   tear?: Animated.Value;
 }) {
-  const holoAll = useStore((s) => s.settings.holoAll);
-  const company = stub.details?.find((d) => d.label === 'Company')?.value;
-  const kind = KINDS.find((k) => k.id === stub.kind)?.label ?? 'Ticket';
-  const count = stub.tickets.length;
   return (
-    <Perforated
-      color={colors.paperWarm}
-      ground={ticketAccent(stub.color, colors.accent)}
-      radius={22}
-      notch={26}
-      rule="#CFCFC6"
-      tear={tear}
-      top={
-        <View style={styles.cardTop}>
-          {(stub.holo || holoAll) && <Holo intensity={0.32} />}
-          {company ? (
-            <View style={styles.markRow}>
-              <CompanyMark name={company} accent={ticketAccent(stub.color, colors.accent)} />
-              <Text style={styles.cardLabel}>
-                {kind}
-                {count > 1 ? ` · ${index + 1} of ${count}` : ''}
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.cardLabel}>
-              {kind}
-              {count > 1 ? ` · ${index + 1} of ${count}` : ''}
-            </Text>
-          )}
-          <Text style={[styles.cardTitle, titleSize(stub.title)]}>{stub.title}</Text>
-          <View style={styles.grid}>
-            <Field label="Date" value={`${relativeDay(stub.date) === 'Today' ? 'Today · ' : ''}${fmt.short(stub.date)}`} />
-            {stub.time ? <Field label="Time" value={stub.time} /> : null}
-            {[...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])]
-              .filter((d) => d.label !== 'Company')
-              .map((d, i) => (
-                <Field
-                  key={`${d.label}-${i}`}
-                  label={d.label === 'Ref' ? 'Booking ref' : d.label}
-                  value={d.value}
-                  mono={d.label === 'Ref'}
-                />
-              ))}
-          </View>
+    <WalletTicket stub={stub} index={index} ground={ticketAccent(stub.color, colors.accent)} artHeight={170} tear={tear}>
+      <View style={styles.codeArea}>
+        <View style={styles.codeBox}>{children}</View>
+        <View style={styles.bright}>
+          <Icon name="sun" size={14} color={colors.nightSoft} stroke={2.2} />
+          <Text style={styles.brightText}>Brightness boosted for scanning</Text>
         </View>
-      }
-      bottom={
-        <View style={styles.cardBottom}>
-          {children}
-          <View style={styles.bright}>
-            <Icon name="sun" size={14} color={colors.inkSoft} stroke={2.2} />
-            <Text style={styles.brightText}>Brightness boosted for scanning</Text>
-          </View>
-        </View>
-      }
-    />
-  );
-}
-
-function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <View style={styles.fieldBox}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Text style={[styles.fieldValue, mono && { fontFamily: fonts.mono }]}>{value}</Text>
-    </View>
+      </View>
+    </WalletTicket>
   );
 }
 
 const styles = StyleSheet.create({
-  markRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
   screen: { flex: 1, backgroundColor: colors.accent },
   scrollBody: { flexGrow: 1, gap: 16 },
   topBar: {
@@ -475,33 +390,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.paper,
   },
-  cardTop: { padding: 22, paddingBottom: 18, gap: 12 },
-  cardLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: colors.inkSoft,
-  },
-  cardTitle: {
-    fontFamily: fonts.display,
-    fontSize: 38,
-    textTransform: 'uppercase',
-    color: colors.ink,
-  },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 28, rowGap: 10 },
-  fieldBox: { gap: 2 },
-  fieldLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: colors.inkFaint,
-  },
-  fieldValue: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.ink },
-  cardBottom: { padding: 20, alignItems: 'center', gap: 12 },
+  codeArea: { paddingHorizontal: 18, paddingBottom: 18, alignItems: 'center', gap: 12 },
+  codeBox: { backgroundColor: colors.paper, borderRadius: 14, padding: 14, alignSelf: 'stretch', alignItems: 'center' },
   bright: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  brightText: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
+  brightText: { fontFamily: fonts.mono, fontSize: 12, color: colors.nightSoft },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   below: { gap: 8, alignItems: 'center', paddingHorizontal: H_PAD },
   swipeHint: {

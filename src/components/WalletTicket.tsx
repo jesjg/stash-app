@@ -18,7 +18,7 @@ const NOTCH = 84;
 const NOTCH_LIFT = 14;
 const RADIUS = 18;
 /** Height of the code or picture in the middle of a home screen card, so every card is the same size. */
-const MIDDLE = 140;
+const MIDDLE = 186;
 
 /** The card's outline: a rounded rectangle with a semicircle bitten out of the top middle. */
 function outline(w: number, h: number) {
@@ -90,7 +90,7 @@ export function WalletTicket({ stub, index = 0, compact, onPress, hint, code, ch
   const kind = KINDS.find((k) => k.id === stub.kind)?.label ?? 'Ticket';
   const fields = fieldsFor(stub, index);
   const ticket = stub.tickets[index];
-  const shown = compact ? fields.slice(0, 3) : fields;
+  const shown = compact ? fields.slice(0, 2) : fields;
   const footer = [relativeDay(stub.date), count > 1 && stub.kind !== 'stay' ? `Ticket ${index + 1} of ${count}` : ''].filter(Boolean).join(' · ');
 
   const card = (
@@ -100,22 +100,40 @@ export function WalletTicket({ stub, index = 0, compact, onPress, hint, code, ch
           <Path d={outline(size.w, size.h)} fill={colors.paper} stroke="#DCDCD5" strokeWidth={StyleSheet.hairlineWidth} />
         </Svg>
       )}
-      <View style={[styles.head, compact && styles.headCompact]}>
-        <View style={styles.grow}>
-          <Text style={[styles.brand, { color: accent }]} numberOfLines={1}>
-            {company ?? kind}
-          </Text>
-          <Text style={styles.title} numberOfLines={compact ? 2 : 3}>
+      {compact ? (
+        // Narrow home screen card: company and date beside the notch, the name full width below it.
+        <View style={styles.headCompact}>
+          <View style={styles.topLine}>
+            <Text style={[styles.brand, styles.grow, { color: accent }]} numberOfLines={1}>
+              {company ?? kind}
+            </Text>
+            <View style={styles.notchGapCompact} />
+            <Text style={[styles.brand, styles.grow, styles.right]} numberOfLines={1}>
+              {`${fmt.dow(stub.date)} ${Number(fmt.dayNum(stub.date))} ${fmt.mon(stub.date)}`}
+            </Text>
+          </View>
+          <Text style={styles.titleCompact} numberOfLines={2}>
             {stub.title}
           </Text>
         </View>
-        {/* Keep clear of the notch. */}
-        <View style={styles.notchGap} />
-        <View style={styles.when}>
-          <Text style={styles.fieldLabel}>{fmt.dow(stub.date)}</Text>
-          <Text style={styles.date}>{`${Number(fmt.dayNum(stub.date))} ${fmt.mon(stub.date)}`}</Text>
+      ) : (
+        <View style={styles.head}>
+          <View style={styles.grow}>
+            <Text style={[styles.brand, { color: accent }]} numberOfLines={1}>
+              {company ?? kind}
+            </Text>
+            <Text style={styles.title} numberOfLines={3}>
+              {stub.title}
+            </Text>
+          </View>
+          {/* Keep clear of the notch. */}
+          <View style={styles.notchGap} />
+          <View style={styles.when}>
+            <Text style={styles.fieldLabel}>{fmt.dow(stub.date)}</Text>
+            <Text style={styles.date}>{`${Number(fmt.dayNum(stub.date))} ${fmt.mon(stub.date)}`}</Text>
+          </View>
         </View>
-      </View>
+      )}
 
       {code ??
         (ticket?.code ? (
@@ -196,7 +214,11 @@ const styles = StyleSheet.create({
   card: {},
   grow: { flex: 1 },
   head: { flexDirection: 'row', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 14 },
-  headCompact: { height: 100 },
+  headCompact: { height: 92, paddingHorizontal: 18, paddingTop: 16, gap: 8 },
+  topLine: { flexDirection: 'row', alignItems: 'center' },
+  notchGapCompact: { width: NOTCH - 4 },
+  right: { textAlign: 'right', color: colors.ink },
+  titleCompact: { fontFamily: fonts.bodyBold, fontSize: 19, lineHeight: 23, color: colors.ink },
   notchGap: { width: NOTCH - 24 },
   brand: { fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6, textTransform: 'uppercase' },
   title: { fontFamily: fonts.bodyBold, fontSize: 20, lineHeight: 24, color: colors.ink, marginTop: 2 },

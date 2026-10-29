@@ -1,12 +1,12 @@
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { ClipPath, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import { fmt, relativeDay } from '../lib/dates';
 import { isJourney, ticketType } from '../lib/ticketTypes';
 import type { Detail, Stub, Ticket } from '../lib/types';
 import { useStore } from '../lib/store';
 import { CodeView } from './CodeView';
-import { Holo } from './Holo';
+import { HOLO_STOPS, useHoloSweep } from './Holo';
 import { Icon } from './Icon';
 
 // Ticket card spec: system font (no fontFamily), white text on the type colour, black on white.
@@ -122,6 +122,40 @@ function headerShape(w: number, radius: number, py: number, r: number) {
   ].join('');
 }
 
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+
+/**
+ * The holographic foil over the coloured header, drawn into the card's shape so it reaches the
+ * middle of the notches like the colour does (and stays out of the notches themselves).
+ */
+function HeaderFoil({ w, shape, height }: { w: number; shape: string; height: number }) {
+  const id = useId().replace(/[^A-Za-z0-9]/g, '');
+  const sweep = useHoloSweep(false);
+  return (
+    <>
+      <Defs>
+        <LinearGradient id={`foil${id}`} x1="0" y1="0" x2="1" y2="0.35">
+          {HOLO_STOPS.map((st) => (
+            <Stop key={st.offset} offset={st.offset} stopColor={st.color} stopOpacity={st.opacity ?? '1'} />
+          ))}
+        </LinearGradient>
+        <ClipPath id={`head${id}`}>
+          <Path d={shape} />
+        </ClipPath>
+      </Defs>
+      <AnimatedRect
+        x={sweep.interpolate({ inputRange: [0, 1], outputRange: [-w * 1.6, -w * 0.4] })}
+        y={0}
+        width={w * 3}
+        height={height}
+        opacity={0.32}
+        fill={`url(#foil${id})`}
+        clipPath={`url(#head${id})`}
+      />
+    </>
+  );
+}
+
 /** The ticket card: type-coloured header, perforation, white body with the code and details. */
 export function WalletTicket({ stub, index = 0, compact, onPress, code, tear }: Props) {
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -159,6 +193,7 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear }: 
         <Svg width={size.w} height={size.h} style={StyleSheet.absoluteFill}>
           <Path d={outline(size.w, size.h, radius, py, notch / 2)} fill={WHITE} />
           <Path d={headerShape(size.w, radius, py, notch / 2)} fill={type.color} />
+          {(stub.holo || holoAll) && <HeaderFoil w={size.w} shape={headerShape(size.w, radius, py, notch / 2)} height={py} />}
           <Path d={outline(size.w, size.h, radius, py, notch / 2)} fill="none" stroke={LINE} strokeWidth={1} />
         </Svg>
       )}
@@ -171,7 +206,6 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear }: 
           !drawn && { backgroundColor: type.color },
         ]}
       >
-        {(stub.holo || holoAll) && <Holo />}
         <View style={styles.headTop}>
           <View style={styles.headLeft}>
             <View style={[styles.badge, compact && styles.badgeCompact]}>

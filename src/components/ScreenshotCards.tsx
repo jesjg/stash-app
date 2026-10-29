@@ -115,7 +115,8 @@ function FoundCard({ shot }: { shot: FoundShot }) {
 
 const styles = StyleSheet.create({
   stack: { gap: 10 },
-  card: { backgroundColor: colors.paper, borderRadius: 16, padding: 18, gap: 8 },
+  // Light grey on the white home screen.
+  card: { backgroundColor: '#F7F7F7', borderRadius: 20, padding: 18, gap: 8 },
   title: { ...font.bodyBold, fontSize: 18, color: colors.ink },
   body: { ...font.body, fontSize: 15, lineHeight: 21, color: colors.inkSoft },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },

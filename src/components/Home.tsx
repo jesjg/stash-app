@@ -30,6 +30,13 @@ const ticketCount = (s: Stub) =>
       : '1 ticket';
 const NEXT_COUNT = 5;
 const CARD_GAP = 12;
+// Home screen spec: white screen, light grey rows, black text, violet add button.
+const SCREEN = '#FFFFFF';
+const SOFT_BG = '#F7F7F7';
+const SOFT_BG_DARK = '#F2F2F2';
+const INK = '#111111';
+const SOFT = '#666666';
+const VIOLET = '#8B3DFF';
 const SHADOW_ROOM = 32;
 const openStub = (id: string) => router.push({ pathname: '/ticket/[id]', params: { id } });
 
@@ -83,24 +90,24 @@ export function Home() {
   return (
     <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: 40 }]}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 8, paddingBottom: 40 }]}
       >
         <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <Logo size={58} />
-            <View>
-              <Text style={label}>{fmt.short(today)}</Text>
+          <View style={styles.rowBetween}>
+            <View style={styles.brandRow}>
+              <Logo size={36} />
               <Text style={styles.wordmark}>Stash</Text>
             </View>
+            <View style={styles.headerButtons}>
+              <RoundButton label="Settings" color={SOFT_BG_DARK} onPress={() => router.push('/settings')} size={44}>
+                <Icon name="settings" color={INK} size={20} stroke={2} />
+              </RoundButton>
+              <RoundButton label="Add ticket" color={VIOLET} onPress={add.open} size={44}>
+                {add.busy ? <ActivityIndicator color="#FFFFFF" /> : <Icon name="plus" color="#FFFFFF" size={20} stroke={2.5} />}
+              </RoundButton>
+            </View>
           </View>
-          <View style={styles.headerButtons}>
-            <RoundButton label="Settings" color="transparent" onPress={() => router.push('/settings')}>
-              <Icon name="settings" color={colors.ink} stroke={2.2} />
-            </RoundButton>
-            <RoundButton label="Add ticket" onPress={add.open} size={48}>
-              {add.busy ? <ActivityIndicator color={colors.accent} /> : <Icon name="plus" color={colors.accent} size={22} />}
-            </RoundButton>
-          </View>
+          <Text style={styles.today}>{fmt.full(today)}</Text>
         </View>
 
         <ScreenshotCards />
@@ -119,7 +126,7 @@ export function Home() {
         {next.length > 0 && (
           <View style={styles.section}>
             <View style={styles.rowBetween}>
-              <Text style={label}>Next up</Text>
+              <Text style={styles.sectionLabel}>Next up</Text>
               {next.length > 1 && <Text style={styles.hint}>Swipe for more</Text>}
             </View>
             <ScrollView
@@ -152,7 +159,7 @@ export function Home() {
         {comingUp.length > 0 && (
           <View style={styles.section}>
             <View style={styles.rowBetween}>
-              <Text style={label}>Coming up</Text>
+              <Text style={styles.sectionLabel}>Coming up</Text>
               <Text style={styles.hint}>Swipe left to archive</Text>
             </View>
             {comingUp.map((s) => (
@@ -166,7 +173,7 @@ export function Home() {
         {groups.past.length > 0 && (
           <View style={styles.section}>
             <View style={styles.rowBetween}>
-              <Text style={label}>Past</Text>
+              <Text style={styles.sectionLabel}>Past</Text>
               <Text style={styles.hint}>Swipe left to archive</Text>
             </View>
             {groups.past.map((s) => (
@@ -179,7 +186,7 @@ export function Home() {
 
         {!empty && (
           <View style={styles.section}>
-            <Text style={label}>Add</Text>
+            <Text style={styles.sectionLabel}>Add</Text>
             <View style={styles.tiles}>
               {[
                 { icon: 'doc' as const, text: 'From Mail', onPress: () => router.push('/mail-help') },
@@ -281,12 +288,9 @@ function StubRow({ stub, faded, countdown }: { stub: Stub; faded?: boolean; coun
       onPress={() => openStub(stub.id)}
       style={({ pressed }) => [styles.row, faded && { opacity: 0.6 }, pressed && { opacity: 0.8 }]}
     >
-      <View style={styles.rowDate}>
-        <View style={[styles.rowBadge, { backgroundColor: type.color }]} accessibilityLabel={type.label}>
-          <Icon name={type.icon} size={20} color="#FFFFFF" stroke={2} />
-        </View>
+      <View style={[styles.rowBadge, { backgroundColor: type.color }]} accessibilityLabel={type.label}>
+        <Icon name={type.icon} size={20} color="#FFFFFF" stroke={2} />
       </View>
-      <View style={styles.rowRule} />
       <View style={styles.rowBody}>
         <Text style={styles.rowTitle} numberOfLines={1}>
           {stub.title}
@@ -322,8 +326,8 @@ function SwipeRow({ stub, action, children }: { stub: Stub; action: 'archive' | 
 function EmptyState({ onAdd, onSample }: { onAdd: () => void; onSample: () => void }) {
   return (
     <Perforated
-      color={colors.paper}
-      ground={colors.ground}
+      color={SOFT_BG}
+      ground={SCREEN}
       style={{ marginTop: 8 }}
       top={
         <View style={styles.emptyTop}>
@@ -360,37 +364,37 @@ function EmptyState({ onAdd, onSample }: { onAdd: () => void; onSample: () => vo
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.ground },
+  screen: { flex: 1, backgroundColor: SCREEN },
   content: { paddingHorizontal: 20, gap: 24 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  header: { gap: 12, marginBottom: -4 },
+  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  wordmark: { ...font.display, fontSize: 36, textTransform: 'uppercase', color: colors.ink },
+  wordmark: { fontSize: 26, fontWeight: '800', letterSpacing: -0.8, color: INK },
+  today: { fontSize: 15, fontWeight: '600', color: SOFT },
+  sectionLabel: { fontSize: 13, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', color: SOFT },
   section: { gap: 10 },
   // Room for the cards' shadow to fade out; the scroll view clips anything outside it.
   carousel: { marginHorizontal: -20, marginVertical: -SHADOW_ROOM },
-  hint: { ...font.mono, fontSize: 11, color: colors.inkFaint },
+  hint: { fontSize: 13, fontWeight: '500', color: SOFT },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingTop: 2 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.rule },
-  dotOn: { width: 20, backgroundColor: colors.ink },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D4D4D4' },
+  dotOn: { width: 22, backgroundColor: INK },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
 
 
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tile: { flexBasis: '47%', flexGrow: 1, backgroundColor: colors.paper, borderRadius: 14, padding: 14, gap: 10, minHeight: 92 },
-  tileIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: colors.ground, alignItems: 'center', justifyContent: 'center' },
+  tile: { flexBasis: '47%', flexGrow: 1, backgroundColor: SOFT_BG, borderRadius: 20, padding: 14, gap: 10, minHeight: 92 },
+  tileIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: SCREEN, alignItems: 'center', justifyContent: 'center' },
   tileText: { ...font.bodyBold, fontSize: 14, lineHeight: 18, color: colors.ink },
-  row: { backgroundColor: colors.paper, borderRadius: 14, flexDirection: 'row', alignItems: 'stretch', height: 76 },
-  rowDate: { width: 74, alignItems: 'center', justifyContent: 'center' },
-  rowBadge: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  rowRule: { borderLeftWidth: 2, borderStyle: 'dashed', borderColor: colors.perforation, marginVertical: 10 },
-  rowBody: { flex: 1, paddingHorizontal: 16, justifyContent: 'center', gap: 4 },
-  rowTitle: { ...font.bodyBold, fontSize: 17, color: colors.ink, textTransform: 'uppercase' },
-  rowMeta: { ...font.mono, fontSize: 12, color: colors.inkSoft },
+  row: { backgroundColor: SOFT_BG, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 16 },
+  rowBadge: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  rowBody: { flex: 1, justifyContent: 'center', gap: 3 },
+  rowTitle: { fontSize: 16, fontWeight: '700', color: INK },
+  rowMeta: { fontSize: 13, fontWeight: '500', color: SOFT },
   swipeAction: {
     width: 88,
     marginLeft: 10,
-    borderRadius: 14,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -70,7 +70,7 @@ function cellsFor(stub: Stub, index: number): Cell[] {
   ].map((d) => ({ ...d, span: d.label === 'Passenger' ? 2 : 1 }));
 }
 
-/** Lay cells out in rows of `cols` columns; a short last row keeps its cells in their columns. */
+/** Lay cells out in rows of `cols` columns. */
 function rowsOf(cells: Cell[], cols: number) {
   const rows: Cell[][] = [];
   let row: Cell[] = [];
@@ -277,7 +277,7 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear }: 
           {rows.map((row, r) => (
             <View key={r} style={styles.gridRow}>
               {row.map((c, i) => (
-                <View key={`${c.label}-${i}`} style={[styles.cell, { flex: c.span }]}>
+                <View key={`${c.label}-${i}`} style={[styles.cell, { width: `${(100 * c.span) / cols}%` }]}>
                   <Text style={styles.cellLabel} numberOfLines={1}>
                     {(LABELS[c.label] ?? c.label).toUpperCase()}
                   </Text>
@@ -295,8 +295,6 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear }: 
                   </Text>
                 </View>
               ))}
-              {/* Keep a short last row's cells in their columns. */}
-              {row.reduce((n, c) => n + c.span, 0) < cols && <View style={{ flex: cols - row.reduce((n, c) => n + c.span, 0) }} />}
             </View>
           ))}
         </View>
@@ -371,8 +369,9 @@ const styles = StyleSheet.create({
   placeholder: { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center' },
   caption: { fontSize: 12, fontWeight: '500', color: SOFT },
   grid: { gap: 16 },
-  gridRow: { flexDirection: 'row', gap: 12 },
-  cell: { alignItems: 'center', gap: 3 },
+  // Each cell is a column wide (span columns for the passenger); a short row sits centred.
+  gridRow: { flexDirection: 'row', justifyContent: 'center' },
+  cell: { alignItems: 'center', gap: 3, paddingHorizontal: 6 },
   cellLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, color: SOFT, textAlign: 'center' },
   cellValue: { fontSize: 20, fontWeight: '700', color: INK, textAlign: 'center', fontVariant: ['tabular-nums'] },
   cellValueLong: { fontSize: 17 },

@@ -1,4 +1,3 @@
-import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -33,10 +32,6 @@ function useReminderTaps(ready: boolean) {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
-    // Only the logo's S; everything else uses the system font.
-    StubsDisplay: require('../../assets/fonts/StubsDisplay.ttf'),
-  });
   const loaded = useStore((s) => s.loaded);
   const stubs = useStore((s) => s.stubs);
   const lockScreen = useStore((s) => s.settings.lockScreen);
@@ -48,8 +43,7 @@ export default function RootLayout() {
       syncHomeWidget();
     }
   }, [loaded, stubs, lockScreen]);
-  // Never sit on the splash screen: if a font fails, carry on with system fonts.
-  const ready = (fontsLoaded || !!fontError) && loaded;
+  const ready = loaded;
 
   useEffect(() => {
     load().then(() => {

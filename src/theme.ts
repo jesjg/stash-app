@@ -30,18 +30,10 @@ export const colors = {
   danger: '#C8321A',
 } as const;
 
-export const fonts = {
-  display: 'StubsDisplay',
-  body: 'SpaceGrotesk_400Regular',
-  bodyMedium: 'SpaceGrotesk_500Medium',
-  bodyBold: 'SpaceGrotesk_700Bold',
-  mono: 'SpaceMono_400Regular',
-  monoBold: 'SpaceMono_700Bold',
-} as const;
 
 /**
  * Text styles in the system font (San Francisco), matching the ticket cards. Spread one into a
- * style: `{ ...font.bodyBold, fontSize: 16 }`. `fonts.display` is kept only for the logo's S.
+ * style: `{ ...font.bodyBold, fontSize: 16 }`.
  */
 export const font = {
   display: { fontWeight: '800', letterSpacing: -0.6 },

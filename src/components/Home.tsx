@@ -29,6 +29,7 @@ const ticketCount = (s: Stub) =>
       : '1 ticket';
 const NEXT_COUNT = 5;
 const CARD_GAP = 12;
+const SHADOW_ROOM = 24;
 const openStub = (id: string) => router.push({ pathname: '/ticket/[id]', params: { id } });
 
 function deleteWithUndo(stub: Stub) {
@@ -123,7 +124,7 @@ export function Home() {
               snapToAlignment="start"
               showsHorizontalScrollIndicator={false}
               style={styles.carousel}
-              contentContainerStyle={{ paddingHorizontal: 20, gap: CARD_GAP }}
+              contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: SHADOW_ROOM, gap: CARD_GAP }}
               onScroll={(e) => setSlide(Math.round(e.nativeEvent.contentOffset.x / (cardW + CARD_GAP)))}
               scrollEventThrottle={32}
             >
@@ -362,7 +363,8 @@ const styles = StyleSheet.create({
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   wordmark: { fontFamily: fonts.display, fontSize: 48, textTransform: 'uppercase', color: colors.ink },
   section: { gap: 10 },
-  carousel: { marginHorizontal: -20 },
+  // Room for the cards' shadow to fade out; the scroll view clips anything outside it.
+  carousel: { marginHorizontal: -20, marginVertical: -SHADOW_ROOM },
   hint: { fontFamily: fonts.mono, fontSize: 11, color: colors.inkFaint },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingTop: 2 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.rule },

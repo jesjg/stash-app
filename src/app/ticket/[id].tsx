@@ -289,7 +289,9 @@ export default function TicketScreen() {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        style={{ flexGrow: 0 }}
+        // Room for the card's shadow to fade out; the scroll view clips anything outside it.
+        style={{ flexGrow: 0, marginVertical: -24 }}
+        contentContainerStyle={{ paddingVertical: 24 }}
         contentOffset={{ x: width * start, y: 0 }}
         onLayout={() => {
           // Open on the ticket that was tapped (contentOffset covers iOS; this covers Android).

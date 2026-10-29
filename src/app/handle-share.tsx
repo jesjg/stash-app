@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { importFiles, importText, type IncomingFile } from '../lib/importer';
 import { looksLikeStay } from '../lib/stay';
-import { colors, fonts, label } from '../theme';
+import { colors, font, label } from '../theme';
 
 /** Landing screen for Share → Stubs from Mail, Files, Photos, etc. */
 export default function HandleShare() {
@@ -99,9 +99,9 @@ export default function HandleShare() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ground, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 },
-  title: { fontFamily: fonts.display, fontSize: 48, textTransform: 'uppercase', color: colors.ink },
-  body: { fontFamily: fonts.body, fontSize: 16, lineHeight: 23, color: colors.ink, textAlign: 'center' },
-  reading: { fontFamily: fonts.mono, fontSize: 13, letterSpacing: 1.4, textTransform: 'uppercase', color: colors.inkSoft },
+  title: { ...font.display, fontSize: 36, color: colors.ink },
+  body: { ...font.body, fontSize: 16, lineHeight: 23, color: colors.ink, textAlign: 'center' },
+  reading: { ...font.mono, fontSize: 13, letterSpacing: 1.4, textTransform: 'uppercase', color: colors.inkSoft },
   btn: { marginTop: 8, height: 52, paddingHorizontal: 24, borderRadius: 999, backgroundColor: colors.accent, justifyContent: 'center' },
-  btnText: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
+  btnText: { ...font.bodyBold, fontSize: 16, color: colors.ink },
 });

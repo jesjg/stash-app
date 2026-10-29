@@ -1,9 +1,3 @@
-import {
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_500Medium,
-  SpaceGrotesk_700Bold,
-} from '@expo-google-fonts/space-grotesk';
-import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
 import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
@@ -40,12 +34,8 @@ function useReminderTaps(ready: boolean) {
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
+    // Only the logo's S; everything else uses the system font.
     StubsDisplay: require('../../assets/fonts/StubsDisplay.ttf'),
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_500Medium,
-    SpaceGrotesk_700Bold,
-    SpaceMono_400Regular,
-    SpaceMono_700Bold,
   });
   const loaded = useStore((s) => s.loaded);
   const stubs = useStore((s) => s.stubs);

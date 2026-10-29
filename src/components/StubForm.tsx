@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dayKey, fmt, timeKey, toDate } from '../lib/dates';
 import { reminderDate } from '../lib/reminders';
 import { KINDS, type Kind, type Stay, type Stub } from '../lib/types';
-import { colors, fonts, label } from '../theme';
+import { colors, font, label } from '../theme';
 import { CodeView } from './CodeView';
 import { Perforated } from './Perforated';
 
@@ -331,7 +331,7 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
                         keyboardType={f.keyboard}
                         autoCapitalize={f.mono ? 'none' : 'sentences'}
                         autoCorrect={!f.mono}
-                        style={[styles.input, f.mono && { fontFamily: fonts.mono }, f.key === 'notes' && { minHeight: 90 }]}
+                        style={[styles.input, f.mono && { ...font.mono }, f.key === 'notes' && { minHeight: 90 }]}
                         accessibilityLabel={f.label}
                       />
                     </View>
@@ -366,41 +366,40 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ground },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   topBtn: { minWidth: 64, minHeight: 44, justifyContent: 'center' },
-  cancel: { fontFamily: fonts.bodyMedium, fontSize: 16, color: colors.ink },
-  heading: { fontFamily: fonts.monoBold, fontSize: 13, letterSpacing: 1.6, textTransform: 'uppercase', color: colors.ink },
+  cancel: { ...font.bodyMedium, fontSize: 16, color: colors.ink },
+  heading: { ...font.monoBold, fontSize: 13, letterSpacing: 1.6, textTransform: 'uppercase', color: colors.ink },
   content: { paddingHorizontal: 20, paddingTop: 8, gap: 22 },
   cardTop: { padding: 20, gap: 8 },
   titleInput: {
-    fontFamily: fonts.display,
-    fontSize: 34,
-    textTransform: 'uppercase',
+    ...font.display,
+    fontSize: 25,
     color: colors.ink,
     padding: 0,
     minHeight: 44,
   },
   cardBottom: { padding: 18, alignItems: 'center' },
   page: { width: '100%', maxHeight: 460, borderRadius: 8, backgroundColor: colors.paper },
-  pageHint: { fontFamily: fonts.mono, fontSize: 11, color: colors.inkFaint, paddingTop: 10 },
+  pageHint: { ...font.mono, fontSize: 11, color: colors.inkFaint, paddingTop: 10 },
   field: { gap: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { borderWidth: 1.5, borderColor: colors.ink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
   chipOn: { backgroundColor: colors.ink },
-  chipText: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.ink },
+  chipText: { ...font.bodyBold, fontSize: 14, color: colors.ink },
   chipTextOn: { color: colors.accent },
   box: { backgroundColor: colors.paper, borderRadius: 14, paddingHorizontal: 16 },
   boxRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  boxLabel: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
+  boxLabel: { ...font.bodyBold, fontSize: 16, color: colors.ink },
   divider: { height: 1, backgroundColor: '#E6E6E0' },
   valueBtn: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: colors.ground, borderRadius: 8 },
-  value: { fontFamily: fonts.mono, fontSize: 15, color: colors.ink },
+  value: { ...font.mono, fontSize: 15, color: colors.ink },
   detail: { backgroundColor: colors.paper, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, gap: 2 },
-  detailLabel: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkFaint },
-  detailValue: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.ink },
+  detailLabel: { ...font.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkFaint },
+  detailValue: { ...font.bodyBold, fontSize: 15, color: colors.ink },
   inputRow: { paddingVertical: 12, gap: 4 },
-  inputLabel: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkFaint },
-  input: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink, padding: 0, minHeight: 24 },
-  reminder: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft, marginTop: -10 },
+  inputLabel: { ...font.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkFaint },
+  input: { ...font.bodyBold, fontSize: 16, color: colors.ink, padding: 0, minHeight: 24 },
+  reminder: { ...font.mono, fontSize: 12, color: colors.inkSoft, marginTop: -10 },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: colors.ground },
   save: { height: 56, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  saveText: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.ink },
+  saveText: { ...font.bodyBold, fontSize: 17, color: colors.ink },
 });

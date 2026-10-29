@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../components/Icon';
 import { RoundButton } from '../../components/RoundButton';
 import { useStore } from '../../lib/store';
-import { colors, fonts } from '../../theme';
+import { colors, font } from '../../theme';
 
 /** Every page as it arrived. Swipe between pages; pinch or double-tap to zoom. */
 export default function Original() {
@@ -91,6 +91,6 @@ function ZoomPage({ uri, width, height, index }: { uri: string; width: number; h
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.night },
   bar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
-  name: { flex: 1, fontFamily: fonts.mono, fontSize: 13, color: colors.nightText },
-  hint: { fontFamily: fonts.mono, fontSize: 11, color: colors.nightSoft, textAlign: 'center', paddingTop: 6 },
+  name: { flex: 1, ...font.mono, fontSize: 13, color: colors.nightText },
+  hint: { ...font.mono, fontSize: 11, color: colors.nightSoft, textAlign: 'center', paddingTop: 6 },
 });

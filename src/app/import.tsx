@@ -6,7 +6,7 @@ import { newId } from '../lib/files';
 import { dataFromUrl, decodeLink, linkDetails, LINK_PAGE, encodeLink } from '../lib/stashLink';
 import { setDraft } from '../lib/store';
 import type { Stub } from '../lib/types';
-import { colors, fonts, label } from '../theme';
+import { colors, font, label } from '../theme';
 
 /** Opened by an "Add to Stash" link (stubs://import?d=…): the ticket arrives already filled in. */
 export default function ImportFromLink() {
@@ -66,9 +66,9 @@ export default function ImportFromLink() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ground, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 },
-  title: { fontFamily: fonts.display, fontSize: 48, textTransform: 'uppercase', color: colors.ink },
-  body: { fontFamily: fonts.body, fontSize: 16, lineHeight: 23, color: colors.ink, textAlign: 'center' },
-  reading: { fontFamily: fonts.mono, fontSize: 13, letterSpacing: 1.4, textTransform: 'uppercase', color: colors.inkSoft },
+  title: { ...font.display, fontSize: 36, color: colors.ink },
+  body: { ...font.body, fontSize: 16, lineHeight: 23, color: colors.ink, textAlign: 'center' },
+  reading: { ...font.mono, fontSize: 13, letterSpacing: 1.4, textTransform: 'uppercase', color: colors.inkSoft },
   btn: { marginTop: 8, height: 52, paddingHorizontal: 24, borderRadius: 999, backgroundColor: colors.accent, justifyContent: 'center' },
-  btnText: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
+  btnText: { ...font.bodyBold, fontSize: 16, color: colors.ink },
 });

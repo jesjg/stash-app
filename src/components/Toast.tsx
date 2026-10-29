@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '../theme';
+import { colors, font } from '../theme';
 
 type ToastState = { id: number; message: string; actionLabel?: string; onAction?: () => void; sticky?: boolean } | null;
 
@@ -72,6 +72,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  message: { flex: 1, color: colors.nightText, fontFamily: fonts.bodyMedium, fontSize: 15 },
-  action: { color: colors.accent, fontFamily: fonts.bodyBold, fontSize: 15 },
+  message: { flex: 1, color: colors.nightText, ...font.bodyMedium, fontSize: 15 },
+  action: { color: colors.accent, ...font.bodyBold, fontSize: 15 },
 });

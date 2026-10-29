@@ -11,7 +11,7 @@ import {
   type FoundShot,
 } from '../lib/screenshots';
 import { setSettings, useStore } from '../lib/store';
-import { colors, fonts, label } from '../theme';
+import { colors, font, label } from '../theme';
 import { Icon } from './Icon';
 
 /** Home-screen cards: a one-time opt-in, then any screenshots that contain a ticket. */
@@ -116,8 +116,8 @@ function FoundCard({ shot }: { shot: FoundShot }) {
 const styles = StyleSheet.create({
   stack: { gap: 10 },
   card: { backgroundColor: colors.paper, borderRadius: 16, padding: 18, gap: 8 },
-  title: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.ink },
-  body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 21, color: colors.inkSoft },
+  title: { ...font.bodyBold, fontSize: 18, color: colors.ink },
+  body: { ...font.body, fontSize: 15, lineHeight: 21, color: colors.inkSoft },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
   primary: {
     minHeight: 44,
@@ -128,11 +128,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   small: { minHeight: 40, paddingHorizontal: 16 },
-  primaryText: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.ink },
+  primaryText: { ...font.bodyBold, fontSize: 15, color: colors.ink },
   ghost: { minHeight: 44, minWidth: 44, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
-  ghostText: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.inkSoft },
+  ghostText: { ...font.bodyMedium, fontSize: 15, color: colors.inkSoft },
   found: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   thumb: { width: 64, height: 112, borderRadius: 8, backgroundColor: colors.ground },
   foundBody: { flex: 1, gap: 4 },
-  foundTitle: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
+  foundTitle: { ...font.bodyBold, fontSize: 16, color: colors.ink },
 });

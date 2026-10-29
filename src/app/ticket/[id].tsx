@@ -27,7 +27,7 @@ import { groupStubs, isArchived, isPast, removeStub, setUsed, useStore } from '.
 import type { Stub } from '../../lib/types';
 import { haptic } from '../../lib/native';
 import { useMaxBrightness } from '../../lib/useMaxBrightness';
-import { colors, fonts } from '../../theme';
+import { colors, font } from '../../theme';
 
 const H_PAD = 16;
 /** Ticket screen spec: white screen, black controls, system font. */
@@ -401,10 +401,9 @@ const styles = StyleSheet.create({
   outlineText: { fontSize: 17, fontWeight: '600', color: INK },
   missing: { paddingHorizontal: H_PAD, gap: 12 },
   missingTitle: {
-    fontFamily: fonts.display,
-    fontSize: 44,
-    textTransform: 'uppercase',
+    ...font.display,
+    fontSize: 33,
     color: colors.ink,
   },
-  missingBody: { fontFamily: fonts.body, fontSize: 16, color: colors.ink },
+  missingBody: { ...font.body, fontSize: 16, color: colors.ink },
 });

@@ -17,7 +17,7 @@ import { dayKey, fmt, relativeDay } from '../lib/dates';
 import { addSampleTicket, clearPast, groupStubs, removeStub, setUsed, useStore } from '../lib/store';
 import { KINDS, type Stub } from '../lib/types';
 import { useAddTicket } from '../lib/useAddTicket';
-import { colors, fonts, label } from '../theme';
+import { colors, font, label } from '../theme';
 
 const kindLabel = (s: Stub) => KINDS.find((k) => k.id === s.kind)?.label ?? 'Ticket';
 const ticketCount = (s: Stub) =>
@@ -358,11 +358,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   headerButtons: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  wordmark: { fontFamily: fonts.display, fontSize: 48, textTransform: 'uppercase', color: colors.ink },
+  wordmark: { ...font.display, fontSize: 36, textTransform: 'uppercase', color: colors.ink },
   section: { gap: 10 },
   // Room for the cards' shadow to fade out; the scroll view clips anything outside it.
   carousel: { marginHorizontal: -20, marginVertical: -SHADOW_ROOM },
-  hint: { fontFamily: fonts.mono, fontSize: 11, color: colors.inkFaint },
+  hint: { ...font.mono, fontSize: 11, color: colors.inkFaint },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingTop: 2 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.rule },
   dotOn: { width: 20, backgroundColor: colors.ink },
@@ -372,14 +372,14 @@ const styles = StyleSheet.create({
   tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile: { flexBasis: '47%', flexGrow: 1, backgroundColor: colors.paper, borderRadius: 14, padding: 14, gap: 10, minHeight: 92 },
   tileIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: colors.ground, alignItems: 'center', justifyContent: 'center' },
-  tileText: { fontFamily: fonts.bodyBold, fontSize: 14, lineHeight: 18, color: colors.ink },
+  tileText: { ...font.bodyBold, fontSize: 14, lineHeight: 18, color: colors.ink },
   row: { backgroundColor: colors.paper, borderRadius: 14, flexDirection: 'row', alignItems: 'stretch', height: 76 },
   rowDate: { width: 74, alignItems: 'center', justifyContent: 'center' },
   rowBadge: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   rowRule: { borderLeftWidth: 2, borderStyle: 'dashed', borderColor: colors.perforation, marginVertical: 10 },
   rowBody: { flex: 1, paddingHorizontal: 16, justifyContent: 'center', gap: 4 },
-  rowTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.ink, textTransform: 'uppercase' },
-  rowMeta: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
+  rowTitle: { ...font.bodyBold, fontSize: 17, color: colors.ink, textTransform: 'uppercase' },
+  rowMeta: { ...font.mono, fontSize: 12, color: colors.inkSoft },
   swipeAction: {
     width: 88,
     marginLeft: 10,
@@ -391,17 +391,17 @@ const styles = StyleSheet.create({
   pastBlock: { gap: 10, borderTopWidth: 1, borderColor: colors.rule, paddingTop: 14 },
   pastBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   pastToggle: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1, minHeight: 44 },
-  pastText: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft, flexShrink: 1 },
+  pastText: { ...font.mono, fontSize: 12, color: colors.inkSoft, flexShrink: 1 },
   archiveHint: { lineHeight: 16 },
   outlineBtn: { borderWidth: 1.5, borderColor: colors.ink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
-  outlineBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.ink },
+  outlineBtnText: { ...font.bodyBold, fontSize: 13, color: colors.ink },
 
   emptyTop: { padding: 22, gap: 10 },
-  emptyTitle: { fontFamily: fonts.display, fontSize: 44, textTransform: 'uppercase', color: colors.ink },
-  emptyBody: { fontFamily: fonts.body, fontSize: 16, lineHeight: 23, color: colors.inkSoft },
+  emptyTitle: { ...font.display, fontSize: 33, color: colors.ink },
+  emptyBody: { ...font.body, fontSize: 16, lineHeight: 23, color: colors.inkSoft },
   emptyBottom: { padding: 20, gap: 6 },
   sampleButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  sampleText: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.ink, textDecorationLine: 'underline' },
+  sampleText: { ...font.bodyBold, fontSize: 15, color: colors.ink, textDecorationLine: 'underline' },
   primary: {
     height: 54,
     borderRadius: 999,
@@ -411,5 +411,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  primaryText: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
+  primaryText: { ...font.bodyBold, fontSize: 16, color: colors.ink },
 });

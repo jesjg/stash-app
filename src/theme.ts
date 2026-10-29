@@ -1,3 +1,4 @@
+import type { TextStyle } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import { paletteColor } from './lib/palette';
 
@@ -38,10 +39,24 @@ export const fonts = {
   monoBold: 'SpaceMono_700Bold',
 } as const;
 
-export const label = {
-  fontFamily: fonts.mono,
+/**
+ * Text styles in the system font (San Francisco), matching the ticket cards. Spread one into a
+ * style: `{ ...font.bodyBold, fontSize: 16 }`. `fonts.display` is kept only for the logo's S.
+ */
+export const font = {
+  display: { fontWeight: '800', letterSpacing: -0.6 },
+  body: { fontWeight: '400' },
+  bodyMedium: { fontWeight: '500' },
+  bodyBold: { fontWeight: '700' },
+  mono: { fontWeight: '500', fontVariant: ['tabular-nums'] },
+  monoBold: { fontWeight: '700', fontVariant: ['tabular-nums'] },
+} satisfies Record<string, TextStyle>;
+
+/** Small grey capitals over a section, like the labels on a ticket. */
+export const label: TextStyle = {
   fontSize: 12,
-  letterSpacing: 1.6,
-  textTransform: 'uppercase' as const,
+  fontWeight: '600',
+  letterSpacing: 0.8,
+  textTransform: 'uppercase',
   color: colors.inkSoft,
 };

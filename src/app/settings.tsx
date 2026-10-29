@@ -15,7 +15,7 @@ import { reminderStatus, type ReminderStatus } from '../lib/reminders';
 import { askPersistentBanners } from '../lib/persistent';
 import { pickCoverPhoto } from '../lib/pickers';
 import { ensureReminders, setSettings, setThemePhoto, useStore } from '../lib/store';
-import { colors, fonts, label } from '../theme';
+import { colors, font, label } from '../theme';
 
 export default function Settings() {
   const count = useStore((s) => s.stubs.length);
@@ -200,10 +200,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ground },
   content: { padding: 20, gap: 28 },
   bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontFamily: fonts.display, fontSize: 40, textTransform: 'uppercase', color: colors.ink },
+  title: { ...font.display, fontSize: 30, color: colors.ink },
   block: { gap: 12 },
-  note: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
-  body: { fontFamily: fonts.body, fontSize: 16, lineHeight: 23, color: colors.ink },
+  note: { ...font.mono, fontSize: 12, color: colors.inkSoft },
+  body: { ...font.body, fontSize: 16, lineHeight: 23, color: colors.ink },
   row: {
     minHeight: 52,
     backgroundColor: colors.paper,
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  rowText: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
+  rowText: { ...font.bodyBold, fontSize: 16, color: colors.ink },
   thumb: { width: 40, height: 40, borderRadius: 8, marginRight: 12 },
-  footer: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft, textAlign: 'center' },
+  footer: { ...font.mono, fontSize: 12, color: colors.inkSoft, textAlign: 'center' },
 });

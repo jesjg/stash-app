@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { reminderStatus, type ReminderStatus } from '../lib/reminders';
 import { askPersistentBanners } from '../lib/persistent';
 import { ensureReminders, useStore } from '../lib/store';
-import { colors, fonts, label } from '../theme';
+import { colors, font, label } from '../theme';
 import { Icon } from './Icon';
 
 let dismissedThisSession = false;
@@ -81,11 +81,11 @@ const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: 'rgba(17,17,17,0.45)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: colors.ground, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 24, gap: 12 },
   badge: { width: 56, height: 56, borderRadius: 18, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  title: { fontFamily: fonts.display, fontSize: 32, textTransform: 'uppercase', color: colors.ink },
-  body: { fontFamily: fonts.body, fontSize: 16, lineHeight: 23, color: colors.ink },
-  tip: { fontFamily: fonts.mono, fontSize: 12, lineHeight: 18, color: colors.inkSoft },
+  title: { ...font.display, fontSize: 24, color: colors.ink },
+  body: { ...font.body, fontSize: 16, lineHeight: 23, color: colors.ink },
+  tip: { ...font.mono, fontSize: 12, lineHeight: 18, color: colors.inkSoft },
   primary: { height: 56, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
-  primaryText: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.ink },
+  primaryText: { ...font.bodyBold, fontSize: 17, color: colors.ink },
   ghost: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  ghostText: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.inkSoft },
+  ghostText: { ...font.bodyMedium, fontSize: 15, color: colors.inkSoft },
 });

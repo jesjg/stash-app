@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { fmt, relativeDay } from '../lib/dates';
 import { isJourney, ticketType } from '../lib/ticketTypes';
 import type { Detail, Stub, Ticket } from '../lib/types';
@@ -27,8 +28,6 @@ type Props = {
   stub: Stub;
   /** Which of the stub's tickets (for its own seat etc.). */
   index?: number;
-  /** Screen colour behind the card, used for the notches. */
-  ground: string;
   /** "Next up" card on the home screen: smaller, fixed size, two details. */
   compact?: boolean;
   onPress?: () => void;
@@ -97,8 +96,36 @@ function routeOf(stub: Stub) {
   return parts.length === 2 && parts.every((p) => /^[A-Za-z]{3,4}$/.test(p)) ? parts.map((p) => p.toUpperCase()) : null;
 }
 
+/**
+ * The card's outline: a rounded rectangle with a semicircle cut into each side at the perforation
+ * (`py`), so the edge, border and shadow all follow the notches.
+ */
+function outline(w: number, h: number, radius: number, py: number, r: number) {
+  const R = radius;
+  return [
+    `M${R} 0H${w - R}A${R} ${R} 0 0 1 ${w} ${R}`,
+    `V${py - r}A${r} ${r} 0 0 0 ${w} ${py + r}`,
+    `V${h - R}A${R} ${R} 0 0 1 ${w - R} ${h}`,
+    `H${R}A${R} ${R} 0 0 1 0 ${h - R}`,
+    `V${py + r}A${r} ${r} 0 0 0 0 ${py - r}`,
+    `V${R}A${R} ${R} 0 0 1 ${R} 0Z`,
+  ].join('');
+}
+
+/** The coloured top of the card, down to the middle of the notches. */
+function headerShape(w: number, radius: number, py: number, r: number) {
+  const R = radius;
+  return [
+    `M0 ${py - r}V${R}A${R} ${R} 0 0 1 ${R} 0H${w - R}A${R} ${R} 0 0 1 ${w} ${R}`,
+    `V${py - r}A${r} ${r} 0 0 0 ${w - r} ${py}`,
+    `H${r}A${r} ${r} 0 0 0 0 ${py - r}Z`,
+  ].join('');
+}
+
 /** The ticket card: type-coloured header, perforation, white body with the code and details. */
-export function WalletTicket({ stub, index = 0, ground, compact, onPress, code, tear }: Props) {
+export function WalletTicket({ stub, index = 0, compact, onPress, code, tear }: Props) {
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [headH, setHeadH] = useState(0);
   const holoAll = useStore((s) => s.settings.holoAll);
   const type = ticketType(stub.kind);
   const ticket = stub.tickets[index];
@@ -117,11 +144,33 @@ export function WalletTicket({ stub, index = 0, ground, compact, onPress, code, 
   const cells = cellsFor(stub, index);
   const rows = rowsOf(compact ? cells.slice(0, 2) : cells, cols);
   const notch = compact ? 20 : 24;
+  const radius = compact ? 24 : 28;
+  // Until the card has been measured, plain colours stand in for the drawn shape.
+  const drawn = size.w > 0 && headH > 0;
+  const py = headH + notch / 2;
   const box = compact ? 150 : 204;
 
   const card = (
-    <View style={[styles.card, { borderRadius: compact ? 24 : 28 }]}>
-      <View style={[styles.head, compact ? styles.headCompact : styles.headFull, { backgroundColor: type.color }]}>
+    <View
+      style={[styles.card, { borderRadius: radius }, !drawn && styles.cardPlain]}
+      onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+    >
+      {drawn && (
+        <Svg width={size.w} height={size.h} style={StyleSheet.absoluteFill}>
+          <Path d={outline(size.w, size.h, radius, py, notch / 2)} fill={WHITE} />
+          <Path d={headerShape(size.w, radius, py, notch / 2)} fill={type.color} />
+          <Path d={outline(size.w, size.h, radius, py, notch / 2)} fill="none" stroke={LINE} strokeWidth={1} />
+        </Svg>
+      )}
+      <View
+        onLayout={(e) => setHeadH(e.nativeEvent.layout.height)}
+        style={[
+          styles.head,
+          compact ? styles.headCompact : styles.headFull,
+          { borderTopLeftRadius: radius, borderTopRightRadius: radius },
+          !drawn && { backgroundColor: type.color },
+        ]}
+      >
         {(stub.holo || holoAll) && <Holo />}
         <View style={styles.headTop}>
           <View style={styles.headLeft}>
@@ -172,14 +221,8 @@ export function WalletTicket({ stub, index = 0, ground, compact, onPress, code, 
         )}
       </View>
 
-      <View style={{ height: notch }}>
-        <View style={[styles.half, { top: 0, backgroundColor: type.color }]} />
-        <View style={[styles.half, { bottom: 0, backgroundColor: WHITE }]} />
-        <View style={styles.perfRow}>
-          <View style={[styles.notch, { width: notch, height: notch, borderRadius: notch / 2, marginLeft: -notch / 2, backgroundColor: ground }]} />
-          <View style={styles.perfDash} />
-          <View style={[styles.notch, { width: notch, height: notch, borderRadius: notch / 2, marginRight: -notch / 2, backgroundColor: ground }]} />
-        </View>
+      <View style={[styles.perfRow, { height: notch, paddingHorizontal: notch / 2 }]}>
+        <View style={styles.perfDash} />
       </View>
 
       <View style={compact ? styles.bodyCompact : styles.body}>
@@ -240,7 +283,7 @@ export function WalletTicket({ stub, index = 0, ground, compact, onPress, code, 
     card
   );
 
-  const lift = [styles.lift, { borderRadius: compact ? 24 : 28 }];
+  const lift = styles.lift;
   if (!tear) return <View style={lift}>{body}</View>;
   return (
     <Animated.View
@@ -261,9 +304,10 @@ export function WalletTicket({ stub, index = 0, ground, compact, onPress, code, 
 }
 
 const styles = StyleSheet.create({
-  // The shadow sits on a white rounded view (iOS needs a background to draw it); the card inside clips.
-  lift: { backgroundColor: WHITE, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 12 }, elevation: 4 },
-  card: { backgroundColor: WHITE, overflow: 'hidden', borderWidth: 1, borderColor: LINE },
+  // No background here, so iOS draws the shadow from the card's drawn shape, notches and all.
+  lift: { shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 12 } },
+  card: {},
+  cardPlain: { backgroundColor: WHITE, overflow: 'hidden' },
   head: { overflow: 'hidden' },
   headFull: { paddingTop: 20, paddingHorizontal: 22, paddingBottom: 32, gap: 18 },
   headCompact: { height: 148, paddingTop: 18, paddingHorizontal: 20, paddingBottom: 28, gap: 14 },
@@ -284,9 +328,7 @@ const styles = StyleSheet.create({
   tilt: { transform: [{ rotate: '45deg' }] },
   titleBox: { gap: 3 },
   title: { fontSize: 24, lineHeight: 27, fontWeight: '800', letterSpacing: -0.6, color: WHITE },
-  half: { position: 'absolute', left: 0, right: 0, height: '50%' },
-  perfRow: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  notch: { borderWidth: 1, borderColor: LINE },
+  perfRow: { flexDirection: 'row', alignItems: 'center' },
   perfDash: { flex: 1, height: 0, borderTopWidth: 2, borderStyle: 'dashed', borderColor: DASH, marginHorizontal: 8 },
   body: { paddingTop: 8, paddingHorizontal: 22, paddingBottom: 22, gap: 18 },
   bodyCompact: { paddingTop: 6, paddingHorizontal: 20, paddingBottom: 18, gap: 14 },

@@ -349,7 +349,7 @@ export default function TicketScreen() {
 }
 
 function TicketCard({ stub, index, children, tear }: { stub: Stub; index: number; children: React.ReactNode; tear?: Animated.Value }) {
-  return <WalletTicket stub={stub} index={index} ground={SCREEN} tear={tear} code={children ?? undefined} />;
+  return <WalletTicket stub={stub} index={index} tear={tear} code={children ?? undefined} />;
 }
 
 const styles = StyleSheet.create({

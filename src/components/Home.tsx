@@ -13,7 +13,7 @@ import { ticketType } from '../lib/ticketTypes';
 import { ScreenshotCards } from './ScreenshotCards';
 import { RoundButton } from './RoundButton';
 import { showToast } from './Toast';
-import { dayKey, fmt, relativeDay } from '../lib/dates';
+import { dayKey, daysBetween, fmt, relativeDay } from '../lib/dates';
 import { addSampleTicket, clearPast, groupStubs, removeStub, setUsed, useStore } from '../lib/store';
 import { KINDS, type Stub } from '../lib/types';
 import { useAddTicket } from '../lib/useAddTicket';
@@ -254,16 +254,21 @@ function NextCard({ stub }: { stub: Stub }) {
     <WalletTicket
       compact
       stub={stub}
-      ground={colors.ground}
       onPress={() => openStub(stub.id)}
     />
   );
 }
 
+/** "Today", "Tomorrow" or "In 12 days" (never the date, which the row shows next to it). */
+function daysToGo(day: string) {
+  const n = daysBetween(dayKey(), day);
+  return n <= 0 ? 'Today' : n === 1 ? 'Tomorrow' : `In ${n} days`;
+}
+
 function StubRow({ stub, faded, countdown }: { stub: Stub; faded?: boolean; countdown?: boolean }) {
   const type = ticketType(stub.kind);
   const meta = countdown
-    ? [relativeDay(stub.date), fmt.short(stub.date), stub.time, kindLabel(stub), stub.tickets.length > 1 ? ticketCount(stub) : ''].filter(Boolean).join(' · ')
+    ? [daysToGo(stub.date), fmt.short(stub.date), stub.time, kindLabel(stub), stub.tickets.length > 1 ? ticketCount(stub) : ''].filter(Boolean).join(' · ')
     : [fmt.short(stub.date), companyOf(stub) ?? kindLabel(stub), stub.time, stub.kind === 'stay' ? ticketCount(stub) || relativeDay(stub.date) : stub.tickets.length > 1 ? ticketCount(stub) : relativeDay(stub.date)]
         .filter(Boolean)
         .join(' · ');

@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { create } from 'qrcode';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { colors } from '../theme';
@@ -50,6 +50,7 @@ export function CodeView({ ticket, size }: Props) {
   const whole = !code || (code.symbology === 'linear' && !!ticket.pageUri);
   const uri = whole ? ticket.pageUri : code.cropUri || ticket.pageUri;
   const wide = !whole && code?.symbology === 'pdf417';
+  if (!whole && code && SQUARE.has(code.symbology)) return <TrimmedCrop uri={uri} size={size} />;
   return (
     <View style={styles.quiet}>
       <Image
@@ -58,6 +59,41 @@ export function CodeView({ ticket, size }: Props) {
         contentFit="contain"
         transition={0}
       />
+    </View>
+  );
+}
+
+/** Codes that are always square, so a crop that isn't square had its margin cut short at the edge of the picture. */
+const SQUARE = new Set(['aztec', 'datamatrix', 'qr']);
+
+/**
+ * The scanner saves each code with a margin of the original picture around it (12% of its size
+ * plus 8px each side, see StubsScannerModule.swift), which pulls in frames and boxes printed
+ * around the code. Zoom in past most of that margin so only the code shows.
+ */
+function TrimmedCrop({ uri, size }: { uri: string; size: number }) {
+  const [crop, setCrop] = useState<{ w: number; h: number } | null>(null);
+  // Before the size is known, or if the margin was cut short, show the crop as saved.
+  const square = crop && Math.abs(crop.w - crop.h) <= 2;
+  const code = square ? (crop.w - 16) / 1.24 : 0;
+  // Keep a sliver of the margin so nothing of the code itself is ever cut.
+  const trim = square && code > 0 ? (0.12 * code + 8) * 0.85 : 0;
+  const scale = trim ? size / (crop!.w - 2 * trim) : 1;
+  return (
+    <View style={styles.quiet}>
+      <View style={{ width: size, height: size, overflow: 'hidden' }}>
+        <Image
+          source={{ uri }}
+          style={
+            trim
+              ? { position: 'absolute', left: -trim * scale, top: -trim * scale, width: crop!.w * scale, height: crop!.h * scale }
+              : { width: size, height: size }
+          }
+          contentFit="contain"
+          transition={0}
+          onLoad={(e) => e.source.width && e.source.height && setCrop({ w: e.source.width, h: e.source.height })}
+        />
+      </View>
     </View>
   );
 }

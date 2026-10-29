@@ -53,9 +53,11 @@ export function Home() {
   const [showPast, setShowPast] = useState(false);
   const [slide, setSlide] = useState(0);
   const { width } = useWindowDimensions();
-  // Narrow like a Wallet pass, centred, with the next card peeking in.
+  // Narrow like a Wallet pass.
   const cardW = Math.min(width - 96, 320);
-  const sidePad = (width - cardW) / 2;
+  // Cards line up with the screen's 20pt margin; the next one peeks in on the right. The end
+  // padding lets the last card snap to the same spot.
+  const endPad = width - 20 - cardW;
   // The next few tickets go in the carousel; everything after that is listed below.
   const live = useMemo(() => [...groups.today, ...groups.upcoming], [groups]);
   const next = live.slice(0, NEXT_COUNT);
@@ -124,10 +126,10 @@ export function Home() {
               horizontal
               decelerationRate="fast"
               snapToInterval={cardW + CARD_GAP}
-              snapToAlignment="center"
+              snapToAlignment="start"
               showsHorizontalScrollIndicator={false}
               style={styles.carousel}
-              contentContainerStyle={{ paddingHorizontal: sidePad, paddingVertical: SHADOW_ROOM, gap: CARD_GAP }}
+              contentContainerStyle={{ paddingLeft: 20, paddingRight: endPad, paddingVertical: SHADOW_ROOM, gap: CARD_GAP }}
               onScroll={(e) => setSlide(Math.round(e.nativeEvent.contentOffset.x / (cardW + CARD_GAP)))}
               scrollEventThrottle={32}
             >

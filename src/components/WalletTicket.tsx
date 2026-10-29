@@ -243,7 +243,7 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear }: 
           </View>
         ) : (
           <View style={styles.titleBox}>
-            <Text style={styles.title} numberOfLines={compact ? 1 : 2} adjustsFontSizeToFit minimumFontScale={0.7}>
+            <Text style={styles.title} numberOfLines={compact ? 1 : 2}>
               {stub.title}
             </Text>
             {subtitle || (compact && operator) ? (

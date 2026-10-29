@@ -9,10 +9,11 @@ import { Logo } from './Logo';
 import { NotifyPrompt } from './NotifyPrompt';
 import { Perforated } from './Perforated';
 import { WalletTicket } from './WalletTicket';
+import { ticketType } from '../lib/ticketTypes';
 import { ScreenshotCards } from './ScreenshotCards';
 import { RoundButton } from './RoundButton';
 import { showToast } from './Toast';
-import { dayKey, daysBetween, fmt, relativeDay } from '../lib/dates';
+import { dayKey, fmt, relativeDay } from '../lib/dates';
 import { addSampleTicket, clearPast, groupStubs, removeStub, setUsed, useStore } from '../lib/store';
 import { KINDS, type Stub } from '../lib/types';
 import { useAddTicket } from '../lib/useAddTicket';
@@ -29,7 +30,7 @@ const ticketCount = (s: Stub) =>
       : '1 ticket';
 const NEXT_COUNT = 5;
 const CARD_GAP = 12;
-const SHADOW_ROOM = 24;
+const SHADOW_ROOM = 32;
 const openStub = (id: string) => router.push({ pathname: '/ticket/[id]', params: { id } });
 
 function deleteWithUndo(stub: Stub) {
@@ -253,17 +254,17 @@ function NextCard({ stub }: { stub: Stub }) {
     <WalletTicket
       compact
       stub={stub}
+      ground={colors.ground}
       onPress={() => openStub(stub.id)}
-      hint={stub.kind === 'stay' ? 'Open →' : 'Show code →'}
     />
   );
 }
 
 function StubRow({ stub, faded, countdown }: { stub: Stub; faded?: boolean; countdown?: boolean }) {
-  const days = daysBetween(dayKey(), stub.date);
+  const type = ticketType(stub.kind);
   const meta = countdown
-    ? [fmt.short(stub.date), stub.time, kindLabel(stub), stub.tickets.length > 1 ? ticketCount(stub) : ''].filter(Boolean).join(' · ')
-    : [companyOf(stub) ?? kindLabel(stub), stub.time, stub.kind === 'stay' ? ticketCount(stub) || relativeDay(stub.date) : stub.tickets.length > 1 ? ticketCount(stub) : relativeDay(stub.date)]
+    ? [relativeDay(stub.date), fmt.short(stub.date), stub.time, kindLabel(stub), stub.tickets.length > 1 ? ticketCount(stub) : ''].filter(Boolean).join(' · ')
+    : [fmt.short(stub.date), companyOf(stub) ?? kindLabel(stub), stub.time, stub.kind === 'stay' ? ticketCount(stub) || relativeDay(stub.date) : stub.tickets.length > 1 ? ticketCount(stub) : relativeDay(stub.date)]
         .filter(Boolean)
         .join(' · ');
   return (
@@ -273,17 +274,11 @@ function StubRow({ stub, faded, countdown }: { stub: Stub; faded?: boolean; coun
       onPress={() => openStub(stub.id)}
       style={({ pressed }) => [styles.row, faded && { opacity: 0.6 }, pressed && { opacity: 0.8 }]}
     >
-      {countdown ? (
-        <View style={styles.rowDate} accessibilityLabel={days <= 0 ? 'Today' : `In ${days} day${days === 1 ? '' : 's'}`}>
-          <Text style={[styles.rowDay, days > 99 && { fontSize: 24 }]}>{days <= 0 ? 'NOW' : days}</Text>
-          <Text style={styles.rowDow}>{days <= 0 ? 'TODAY' : days === 1 ? 'DAY' : 'DAYS'}</Text>
+      <View style={styles.rowDate}>
+        <View style={[styles.rowBadge, { backgroundColor: type.color }]} accessibilityLabel={type.label}>
+          <Icon name={type.icon} size={20} color="#FFFFFF" stroke={2} />
         </View>
-      ) : (
-        <View style={styles.rowDate}>
-          <Text style={styles.rowDay}>{fmt.dayNum(stub.date)}</Text>
-          <Text style={styles.rowDow}>{fmt.dow(stub.date)}</Text>
-        </View>
-      )}
+      </View>
       <View style={styles.rowRule} />
       <View style={styles.rowBody}>
         <Text style={styles.rowTitle} numberOfLines={1}>
@@ -380,8 +375,7 @@ const styles = StyleSheet.create({
   tileText: { fontFamily: fonts.bodyBold, fontSize: 14, lineHeight: 18, color: colors.ink },
   row: { backgroundColor: colors.paper, borderRadius: 14, flexDirection: 'row', alignItems: 'stretch', height: 76 },
   rowDate: { width: 74, alignItems: 'center', justifyContent: 'center' },
-  rowDay: { fontFamily: fonts.display, fontSize: 30, color: colors.ink },
-  rowDow: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 1, color: colors.inkSoft },
+  rowBadge: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   rowRule: { borderLeftWidth: 2, borderStyle: 'dashed', borderColor: colors.perforation, marginVertical: 10 },
   rowBody: { flex: 1, paddingHorizontal: 16, justifyContent: 'center', gap: 4 },
   rowTitle: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.ink, textTransform: 'uppercase' },

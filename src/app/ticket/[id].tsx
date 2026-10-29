@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CodeView } from '../../components/CodeView';
 import { StayCard } from '../../components/StayCard';
 import { Icon } from '../../components/Icon';
-import { WalletTicket } from '../../components/WalletTicket';
+import { fitCode, WalletTicket } from '../../components/WalletTicket';
 import { RoundButton } from '../../components/RoundButton';
 import { showToast } from '../../components/Toast';
 import { canSendAll, sendAll, sendTicket } from '../../lib/send';
@@ -29,7 +29,10 @@ import { haptic } from '../../lib/native';
 import { useMaxBrightness } from '../../lib/useMaxBrightness';
 import { colors, fonts } from '../../theme';
 
-const H_PAD = 20;
+const H_PAD = 16;
+/** Ticket screen spec: white screen, black controls, system font. */
+const SCREEN = '#FFFFFF';
+const INK = '#111111';
 
 export default function TicketScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -81,8 +84,6 @@ export default function TicketScreen() {
   }
 
   const count = stub.tickets.length;
-  const cardWidth = width - H_PAD * 2;
-  const codeSize = Math.min(cardWidth - 80, 300);
 
   const more = () => {
     const sample = !!stub.sample;
@@ -192,7 +193,7 @@ export default function TicketScreen() {
         style={({ pressed }) => [styles.solid, styles.grow, pressed && { opacity: 0.8 }]}
       >
         <Text style={styles.solidText}>
-          {stub.kind === 'stay' ? (stub.usedAt ? 'Not checked out' : 'Checked out') : stub.usedAt ? 'Not used yet' : 'Used'}
+          {stub.kind === 'stay' ? (stub.usedAt ? 'Not checked out' : 'Checked out') : stub.usedAt ? 'Not used yet' : 'Mark as used'}
         </Text>
       </Pressable>
       {stub.sample ? (
@@ -239,25 +240,25 @@ export default function TicketScreen() {
       contentContainerStyle={[styles.scrollBody, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}
     >
       <View style={[styles.topBar, { paddingHorizontal: H_PAD }]}>
-        <RoundButton label="Back" onPress={() => router.back()} size={44}>
+        <RoundButton label="Back" onPress={() => router.back()} size={48} color={INK}>
           <Icon name="back" color={colors.paper} />
         </RoundButton>
         {stubIds.length > 1 ? (
           <View style={styles.counter} accessibilityLabel={`${stubIds.indexOf(stub.id) + 1} of ${stubIds.length}. Swipe for the next.`}>
             <Text style={styles.counterText}>
-              {stubIds.indexOf(stub.id) + 1} / {stubIds.length}
+              {stubIds.indexOf(stub.id) + 1} of {stubIds.length}
             </Text>
           </View>
         ) : count > 1 && stub.kind !== 'stay' ? (
           <View style={styles.counter}>
             <Text style={styles.counterText}>
-              {page + 1} / {count}
+              {page + 1} of {count}
             </Text>
           </View>
         ) : (
           <View />
         )}
-        <RoundButton label="More options" onPress={more} size={44}>
+        <RoundButton label="More options" onPress={more} size={48} color={INK}>
           <Icon name="more" color={colors.paper} />
         </RoundButton>
       </View>
@@ -290,8 +291,8 @@ export default function TicketScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         // Room for the card's shadow to fade out; the scroll view clips anything outside it.
-        style={{ flexGrow: 0, marginVertical: -24 }}
-        contentContainerStyle={{ paddingVertical: 24 }}
+        style={{ flexGrow: 0, marginVertical: -32 }}
+        contentContainerStyle={{ paddingVertical: 32 }}
         contentOffset={{ x: width * start, y: 0 }}
         onLayout={() => {
           // Open on the ticket that was tapped (contentOffset covers iOS; this covers Android).
@@ -314,7 +315,7 @@ export default function TicketScreen() {
               </View>
             ) : (
               <View style={styles.pageBody}>
-                <TicketCard stub={p.stub} index={p.index} codeSize={codeSize} tear={i === at ? tear : undefined}>
+                <TicketCard stub={p.stub} index={p.index} tear={i === at ? tear : undefined}>
                   {p.stub.tickets[p.index] ? (
                     <Pressable
                       accessibilityRole="button"
@@ -333,7 +334,7 @@ export default function TicketScreen() {
                       }
                       style={({ pressed }) => pressed && { opacity: 0.85 }}
                     >
-                      <CodeView ticket={p.stub.tickets[p.index]} size={codeSize} />
+                      <CodeView ticket={p.stub.tickets[p.index]} size={fitCode(p.stub.tickets[p.index], 204)} />
                     </Pressable>
                   ) : null}
                 </TicketCard>
@@ -347,56 +348,26 @@ export default function TicketScreen() {
   );
 }
 
-function TicketCard({
-  stub,
-  index,
-  children,
-  tear,
-}: {
-  stub: Stub;
-  index: number;
-  codeSize: number;
-  children: React.ReactNode;
-  tear?: Animated.Value;
-}) {
-  return (
-    <WalletTicket stub={stub} index={index} tear={tear} code={children ? <View style={styles.codeArea}>{children}</View> : undefined}>
-      <View style={styles.bright}>
-        <Icon name="sun" size={14} color={colors.inkSoft} stroke={2.2} />
-        <Text style={styles.brightText}>Brightness boosted for scanning</Text>
-      </View>
-    </WalletTicket>
-  );
+function TicketCard({ stub, index, children, tear }: { stub: Stub; index: number; children: React.ReactNode; tear?: Animated.Value }) {
+  return <WalletTicket stub={stub} index={index} ground={SCREEN} tear={tear} code={children ?? undefined} />;
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.ground },
+  screen: { flex: 1, backgroundColor: SCREEN },
   scrollBody: { flexGrow: 1, gap: 16 },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  counter: {
-    backgroundColor: colors.ink,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  counterText: {
-    fontFamily: fonts.monoBold,
-    fontSize: 13,
-    color: colors.paper,
-  },
-  codeArea: { paddingHorizontal: 18, alignItems: 'center' },
-  bright: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 16 },
-  brightText: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
+  counter: { height: 40, paddingHorizontal: 18, borderRadius: 20, backgroundColor: INK, justifyContent: 'center' },
+  counterText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF', fontVariant: ['tabular-nums'] },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   below: { gap: 8, alignItems: 'center', paddingHorizontal: H_PAD },
   swipeHint: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    color: 'rgba(17,17,17,0.65)',
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666666',
     textAlign: 'center',
   },
   dot: {
@@ -407,10 +378,10 @@ const styles = StyleSheet.create({
   },
   dotOn: { width: 22, backgroundColor: colors.ink },
   outline: {
-    height: 54,
-    borderRadius: 999,
+    height: 56,
+    borderRadius: 28,
     borderWidth: 2,
-    borderColor: colors.ink,
+    borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
@@ -419,15 +390,15 @@ const styles = StyleSheet.create({
   pageBody: { gap: 16 },
   grow: { flex: 1 },
   solid: {
-    height: 54,
-    borderRadius: 999,
-    backgroundColor: colors.ink,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 26,
   },
-  solidText: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.paper },
-  outlineText: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
+  solidText: { fontSize: 17, fontWeight: '600', color: '#FFFFFF' },
+  outlineText: { fontSize: 17, fontWeight: '600', color: INK },
   missing: { paddingHorizontal: H_PAD, gap: 12 },
   missingTitle: {
     fontFamily: fonts.display,

@@ -1,178 +1,228 @@
-import { Image } from 'expo-image';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { fmt, relativeDay } from '../lib/dates';
-import { ticketAccent } from '../lib/palette';
-import { KINDS, type Detail, type Stub, type Ticket } from '../lib/types';
+import { isJourney, ticketType } from '../lib/ticketTypes';
+import type { Detail, Stub, Ticket } from '../lib/types';
 import { useStore } from '../lib/store';
-import { colors, fonts } from '../theme';
-import Svg, { Path } from 'react-native-svg';
 import { CodeView } from './CodeView';
 import { Holo } from './Holo';
+import { Icon } from './Icon';
 
-/** Seat-like details, shown first (like Sec / Row / Seat on a Wallet pass). */
-const SEATING = ['Section', 'Block', 'Stand', 'Row', 'Seat', 'Coach', 'Berth', 'Cabin', 'Deck', 'Platform', 'Gate', 'Terminal', 'Flight', 'Entrance', 'Door'];
-const SHORT: Record<string, string> = { Section: 'Sec', Ref: 'Booking ref' };
-const NOTCH = 84;
-/** How far the notch's circle sits above the card's top edge. */
-const NOTCH_LIFT = 14;
-const RADIUS = 18;
-/** Height of the code or picture in the middle of a home screen card, so every card is the same size. */
-const MIDDLE = 186;
+// Ticket card spec: system font (no fontFamily), white text on the type colour, black on white.
+const INK = '#111111';
+const SOFT = '#666666';
+const LINE = '#EBEBEB';
+const DASH = '#E2E2E2';
+const WHITE = '#FFFFFF';
 
-/** The card's outline: a rounded rectangle with a semicircle bitten out of the top middle. */
-function outline(w: number, h: number) {
-  const r = RADIUS;
-  const R = NOTCH / 2;
-  const half = Math.sqrt(R * R - NOTCH_LIFT * NOTCH_LIFT);
-  const cx = w / 2;
-  return [
-    `M${r} 0H${cx - half}`,
-    `A${R} ${R} 0 0 0 ${cx + half} 0`,
-    `H${w - r}A${r} ${r} 0 0 1 ${w} ${r}`,
-    `V${h - r}A${r} ${r} 0 0 1 ${w - r} ${h}`,
-    `H${r}A${r} ${r} 0 0 1 0 ${h - r}`,
-    `V${r}A${r} ${r} 0 0 1 ${r} 0Z`,
-  ].join('');
-}
+/** Seat-like details, shown first. */
+const SEATING = ['Section', 'Block', 'Stand', 'Row', 'Seat', 'Coach', 'Berth', 'Cabin', 'Deck', 'Platform', 'Gate', 'Terminal', 'Entrance', 'Door'];
+/** Times worth a highlight (shown in a pill of the type colour). */
+const DEADLINES = ['Gate closes', 'Boarding', 'Doors'];
+const LABELS: Record<string, string> = { Section: 'Sec' };
+
+type Cell = Detail & { span: number; pill?: boolean };
 
 type Props = {
   stub: Stub;
   /** Which of the stub's tickets (for its own seat etc.). */
   index?: number;
-  /** Home screen card: fixed size, one row of details, tap to open. */
+  /** Screen colour behind the card, used for the notches. */
+  ground: string;
+  /** "Next up" card on the home screen: smaller, fixed size, two details. */
   compact?: boolean;
   onPress?: () => void;
-  /** Small text at the end of the bottom line, e.g. "Show code →". */
-  hint?: string;
-  /** Replaces the code in the middle of the card (the bigger, tappable code on the ticket screen). */
+  /** Replaces the code (the tappable code on the ticket screen). */
   code?: ReactNode;
-  /** Shown under the details. */
-  children?: ReactNode;
   /** 0 → 1 drops the ticket away (used when archiving). */
   tear?: Animated.Value;
 };
 
-/** Seat-like codes first (only short codes like "EE", "7", "SCH-G", not words read by mistake), then time, then the rest. */
-function fieldsFor(stub: Stub, index: number): Detail[] {
+/** Size to give CodeView so the code and its white margin fill a `box`-sized square. */
+export function fitCode(ticket: Ticket, box: number) {
+  const { code } = ticket;
+  if (code?.symbology === 'qr' && code.payload) return Math.floor(box / 1.12);
+  // A barcode ticket shows its whole page, drawn 1.4× taller than wide.
+  if (!code || (code.symbology === 'linear' && ticket.pageUri)) return Math.floor((box - 20) / 1.4);
+  return box - 20;
+}
+
+/** Seat-like codes first, then the time, then the rest; the passenger's name takes two columns. */
+function cellsFor(stub: Stub, index: number): Cell[] {
   if (stub.kind === 'stay') {
     const st = stub.stay ?? {};
     return [
-      stub.time ? { label: 'Check-in', value: stub.time } : null,
-      st.checkOutDate ? { label: 'Check-out', value: `${fmt.short(st.checkOutDate)}${st.checkOutTime ? ` ${st.checkOutTime}` : ''}` } : null,
-      st.address ? { label: 'Address', value: st.address.split(',')[0] } : null,
-    ].filter((d): d is Detail => !!d);
+      stub.time ? { label: 'Check-in', value: stub.time, span: 1 } : null,
+      st.checkOutDate ? { label: 'Check-out', value: `${fmt.short(st.checkOutDate)}${st.checkOutTime ? ` ${st.checkOutTime}` : ''}`, span: 1 } : null,
+      st.doorCode ? { label: 'Door code', value: st.doorCode, span: 1 } : null,
+      st.address ? { label: 'Address', value: st.address.split(',')[0], span: 2 } : null,
+    ].filter((c): c is Cell => !!c);
   }
-  const all = [...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company');
+  const all = [...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company' && d.label !== 'Flight');
   const isCode = (v: string) => v.length <= 8 && (/\d/.test(v) || v === v.toUpperCase());
   const seating = SEATING.flatMap((name) => all.filter((d) => d.label === name && isCode(d.value)));
+  const timeLabel = isJourney(stub.kind) ? 'Departs' : stub.kind === 'activity' ? 'Start' : 'Time';
   const rest = all.filter((d) => !seating.includes(d));
-  return [...seating, ...(stub.time ? [{ label: 'Time', value: stub.time }] : []), ...rest];
+  return [
+    ...seating,
+    ...(stub.time ? [{ label: timeLabel, value: stub.time }] : []),
+    ...rest.filter((d) => DEADLINES.includes(d.label)).map((d) => ({ ...d, pill: true })),
+    ...rest.filter((d) => !DEADLINES.includes(d.label)),
+  ].map((d) => ({ ...d, span: d.label === 'Passenger' ? 2 : 1 }));
 }
 
-/** Code size that fits MIDDLE once CodeView adds its white margin (a whole page is drawn 1.4× taller, a PDF417 0.55×). */
-function compactCodeSize(ticket: Ticket) {
-  const { code } = ticket;
-  if (code?.symbology === 'qr' && code.payload) return Math.floor(MIDDLE / 1.12);
-  if (!code || (code.symbology === 'linear' && ticket.pageUri)) return Math.floor((MIDDLE - 20) / 1.4);
-  return MIDDLE - 20;
+/** Lay cells out in rows of `cols` columns; a short last row keeps its cells in their columns. */
+function rowsOf(cells: Cell[], cols: number) {
+  const rows: Cell[][] = [];
+  let row: Cell[] = [];
+  let used = 0;
+  for (const c of cells) {
+    const span = Math.min(c.span, cols);
+    if (used + span > cols) {
+      rows.push(row);
+      row = [];
+      used = 0;
+    }
+    row.push({ ...c, span });
+    used += span;
+  }
+  if (row.length) rows.push(row);
+  return rows;
 }
 
-/** A white ticket shaped like an Apple Wallet pass: notch at the top, name and date, picture, labelled details. */
-export function WalletTicket({ stub, index = 0, compact, onPress, hint, code, children, tear }: Props) {
-  const [size, setSize] = useState({ w: 0, h: 0 });
-  const themePhoto = useStore((s) => s.settings.themePhoto);
+/** "LGW → PMI" style titles become big route codes on the ticket screen. */
+function routeOf(stub: Stub) {
+  if (!isJourney(stub.kind)) return null;
+  const parts = stub.title.split(/\s*(?:→|->)\s*/);
+  return parts.length === 2 && parts.every((p) => /^[A-Za-z]{3,4}$/.test(p)) ? parts.map((p) => p.toUpperCase()) : null;
+}
+
+/** The ticket card: type-coloured header, perforation, white body with the code and details. */
+export function WalletTicket({ stub, index = 0, ground, compact, onPress, code, tear }: Props) {
   const holoAll = useStore((s) => s.settings.holoAll);
-  const cover = stub.cover ?? themePhoto;
-  const accent = ticketAccent(stub.color, colors.accent);
-  const count = stub.tickets.length;
-  const company = stub.details?.find((d) => d.label === 'Company')?.value;
-  const kind = KINDS.find((k) => k.id === stub.kind)?.label ?? 'Ticket';
-  const fields = fieldsFor(stub, index);
+  const type = ticketType(stub.kind);
   const ticket = stub.tickets[index];
-  const shown = compact ? fields.slice(0, 2) : fields;
-  const footer = [relativeDay(stub.date), count > 1 && stub.kind !== 'stay' ? `Ticket ${index + 1} of ${count}` : ''].filter(Boolean).join(' · ');
+  const company = stub.details?.find((d) => d.label === 'Company')?.value;
+  const flight = stub.details?.find((d) => d.label === 'Flight')?.value ?? stub.tickets[index]?.details?.find((d) => d.label === 'Flight')?.value;
+  const operator = [company, flight].filter(Boolean).join(' · ');
+  const route = compact ? null : routeOf(stub);
+  const count = stub.tickets.length;
+  const subtitle =
+    stub.kind === 'stay'
+      ? stub.stay?.address?.split(',')[0]
+      : [relativeDay(stub.date), count > 1 ? `Ticket ${index + 1} of ${count}` : ''].filter(Boolean).join(' · ');
+  const day = fmt.dow(stub.date);
+  const date = `${Number(fmt.dayNum(stub.date))} ${fmt.mon(stub.date)}`;
+  const cols = compact ? 2 : 3;
+  const cells = cellsFor(stub, index);
+  const rows = rowsOf(compact ? cells.slice(0, 2) : cells, cols);
+  const notch = compact ? 20 : 24;
+  const box = compact ? 150 : 204;
 
   const card = (
-    <View style={styles.card} onLayout={(e) => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
-      {size.w > 0 && (
-        <Svg width={size.w} height={size.h} style={StyleSheet.absoluteFill}>
-          <Path d={outline(size.w, size.h)} fill={colors.paper} stroke="#DCDCD5" strokeWidth={StyleSheet.hairlineWidth} />
-        </Svg>
-      )}
-      {compact ? (
-        // Narrow home screen card: company and date beside the notch, the name full width below it.
-        <View style={styles.headCompact}>
-          <View style={styles.topLine}>
-            <Text style={[styles.brand, styles.grow, { color: accent }]} numberOfLines={1}>
-              {company ?? kind}
-            </Text>
-            <View style={styles.notchGapCompact} />
-            <Text style={[styles.brand, styles.grow, styles.right]} numberOfLines={1}>
-              {`${fmt.dow(stub.date)} ${Number(fmt.dayNum(stub.date))} ${fmt.mon(stub.date)}`}
-            </Text>
+    <View style={[styles.card, { borderRadius: compact ? 24 : 28 }]}>
+      <View style={[styles.head, compact ? styles.headCompact : styles.headFull, { backgroundColor: type.color }]}>
+        {(stub.holo || holoAll) && <Holo />}
+        <View style={styles.headTop}>
+          <View style={styles.headLeft}>
+            <View style={[styles.badge, compact && styles.badgeCompact]}>
+              <Icon name={type.icon} size={compact ? 18 : 20} color={type.color} stroke={2} />
+            </View>
+            <View style={styles.shrink}>
+              <Text style={[styles.typeLabel, compact && styles.small]}>{type.label}</Text>
+              {!compact && operator ? (
+                <Text style={styles.headSub} numberOfLines={1}>
+                  {operator}
+                </Text>
+              ) : null}
+            </View>
           </View>
-          <Text style={styles.titleCompact} numberOfLines={2}>
-            {stub.title}
-          </Text>
+          {compact ? (
+            <Text style={[styles.typeLabel, styles.small]}>{`${day} ${date}`.toUpperCase()}</Text>
+          ) : (
+            <View style={styles.when}>
+              <Text style={styles.typeLabel}>{day}</Text>
+              <Text style={styles.date}>{date}</Text>
+            </View>
+          )}
         </View>
-      ) : (
-        <View style={styles.head}>
-          <View style={styles.grow}>
-            <Text style={[styles.brand, { color: accent }]} numberOfLines={1}>
-              {company ?? kind}
-            </Text>
-            <Text style={styles.title} numberOfLines={3}>
-              {stub.title}
-            </Text>
-          </View>
-          {/* Keep clear of the notch. */}
-          <View style={styles.notchGap} />
-          <View style={styles.when}>
-            <Text style={styles.fieldLabel}>{fmt.dow(stub.date)}</Text>
-            <Text style={styles.date}>{`${Number(fmt.dayNum(stub.date))} ${fmt.mon(stub.date)}`}</Text>
-          </View>
-        </View>
-      )}
-
-      {code ??
-        (ticket?.code ? (
-          <View style={[styles.codeSlot, compact && { height: MIDDLE }]}>
-            <CodeView ticket={ticket} size={compact ? compactCodeSize(ticket) : 180} />
+        {route ? (
+          <View style={styles.route}>
+            <Text style={styles.code}>{route[0]}</Text>
+            <View style={styles.flightPath}>
+              <View style={styles.pathDash} />
+              <View style={stub.kind === 'flight' && styles.tilt}>
+                <Icon name={stub.kind === 'flight' ? 'typePlane' : type.icon} size={22} color={WHITE} stroke={2} />
+              </View>
+              <View style={styles.pathDash} />
+            </View>
+            <Text style={styles.code}>{route[1]}</Text>
           </View>
         ) : (
-          <View style={[styles.banner, { height: compact ? MIDDLE : 132, backgroundColor: accent }]}>
-            {cover ? (
-              <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
-            ) : (
-              <Text style={styles.bannerText} numberOfLines={1} adjustsFontSizeToFit>
-                {company ?? kind}
+          <View style={styles.titleBox}>
+            <Text style={styles.title} numberOfLines={compact ? 1 : 2} adjustsFontSizeToFit minimumFontScale={0.7}>
+              {stub.title}
+            </Text>
+            {subtitle || (compact && operator) ? (
+              <Text style={styles.headSub} numberOfLines={1}>
+                {compact && operator ? operator : subtitle}
               </Text>
-            )}
-            {(stub.holo || holoAll) && <Holo />}
+            ) : null}
           </View>
-        ))}
-
-      <View style={[styles.fields, compact && styles.fieldsCompact]}>
-        {shown.map((d, i) => (
-          <View key={`${d.label}-${i}`} style={[styles.field, compact ? styles.grow : styles.fieldWide]}>
-            <Text style={styles.fieldLabel} numberOfLines={1}>
-              {SHORT[d.label] ?? d.label}
-            </Text>
-            <Text style={[styles.fieldValue, d.label === 'Ref' && { fontFamily: fonts.mono, fontSize: 15 }]} numberOfLines={compact ? 1 : 3}>
-              {d.value}
-            </Text>
-          </View>
-        ))}
+        )}
       </View>
 
-      {children}
+      <View style={{ height: notch }}>
+        <View style={[styles.half, { top: 0, backgroundColor: type.color }]} />
+        <View style={[styles.half, { bottom: 0, backgroundColor: WHITE }]} />
+        <View style={styles.perfRow}>
+          <View style={[styles.notch, { width: notch, height: notch, borderRadius: notch / 2, marginLeft: -notch / 2, backgroundColor: ground }]} />
+          <View style={styles.perfDash} />
+          <View style={[styles.notch, { width: notch, height: notch, borderRadius: notch / 2, marginRight: -notch / 2, backgroundColor: ground }]} />
+        </View>
+      </View>
 
-      <View style={styles.footer}>
-        <Text style={[styles.footerText, styles.grow]} numberOfLines={1}>
-          {footer}
-        </Text>
-        {hint ? <Text style={[styles.hint, { color: accent }]}>{hint}</Text> : null}
+      <View style={compact ? styles.bodyCompact : styles.body}>
+        <View style={styles.codeBox}>
+          <View style={[styles.codeSlot, { height: box }]}>
+            {code ??
+              (ticket?.code ? (
+                <CodeView ticket={ticket} size={fitCode(ticket, box)} />
+              ) : (
+                <View style={[styles.placeholder, { backgroundColor: `${type.color}14` }]}>
+                  <Icon name={type.icon} size={56} color={type.color} stroke={1.6} />
+                </View>
+              ))}
+          </View>
+          {!compact && <Text style={styles.caption}>Brightness boosted for scanning</Text>}
+        </View>
+        <View style={[styles.grid, compact && { minHeight: 44 }]}>
+          {rows.map((row, r) => (
+            <View key={r} style={styles.gridRow}>
+              {row.map((c, i) => (
+                <View key={`${c.label}-${i}`} style={[styles.cell, { flex: c.span }]}>
+                  <Text style={styles.cellLabel} numberOfLines={1}>
+                    {(LABELS[c.label] ?? c.label).toUpperCase()}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.cellValue,
+                      (compact || c.value.length > 8) && styles.cellValueLong,
+                      c.pill && [styles.pill, { backgroundColor: type.color }],
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.6}
+                  >
+                    {c.value}
+                  </Text>
+                </View>
+              ))}
+              {/* Keep a short last row's cells in their columns. */}
+              {row.reduce((n, c) => n + c.span, 0) < cols && <View style={{ flex: cols - row.reduce((n, c) => n + c.span, 0) }} />}
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -190,11 +240,12 @@ export function WalletTicket({ stub, index = 0, compact, onPress, hint, code, ch
     card
   );
 
-  if (!tear) return <View style={styles.lift}>{body}</View>;
+  const lift = [styles.lift, { borderRadius: compact ? 24 : 28 }];
+  if (!tear) return <View style={lift}>{body}</View>;
   return (
     <Animated.View
       style={[
-        styles.lift,
+        lift,
         {
           opacity: tear.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] }),
           transform: [
@@ -210,30 +261,44 @@ export function WalletTicket({ stub, index = 0, compact, onPress, hint, code, ch
 }
 
 const styles = StyleSheet.create({
-  lift: { shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
-  card: {},
-  grow: { flex: 1 },
-  head: { flexDirection: 'row', paddingHorizontal: 18, paddingTop: 16, paddingBottom: 14 },
-  headCompact: { height: 92, paddingHorizontal: 18, paddingTop: 16, gap: 8 },
-  topLine: { flexDirection: 'row', alignItems: 'center' },
-  notchGapCompact: { width: NOTCH - 4 },
-  right: { textAlign: 'right', color: colors.ink },
-  titleCompact: { fontFamily: fonts.bodyBold, fontSize: 19, lineHeight: 23, color: colors.ink },
-  notchGap: { width: NOTCH - 24 },
-  brand: { fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6, textTransform: 'uppercase' },
-  title: { fontFamily: fonts.bodyBold, fontSize: 20, lineHeight: 24, color: colors.ink, marginTop: 2 },
-  when: { alignItems: 'flex-end' },
-  date: { fontFamily: fonts.body, fontSize: 24, lineHeight: 28, color: colors.inkSoft },
-  codeSlot: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  banner: { marginHorizontal: 18, borderRadius: 12, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  bannerText: { fontFamily: fonts.display, fontSize: 40, textTransform: 'uppercase', color: colors.ink },
-  fields: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 18, paddingTop: 16, rowGap: 14, columnGap: 16 },
-  fieldsCompact: { flexWrap: 'nowrap', height: 62 },
-  field: { gap: 2 },
-  fieldWide: { minWidth: '28%', maxWidth: '100%' },
-  fieldLabel: { fontFamily: fonts.bodyBold, fontSize: 12, letterSpacing: 0.4, textTransform: 'uppercase', color: colors.ink },
-  fieldValue: { fontFamily: fonts.body, fontSize: 17, color: colors.inkSoft },
-  footer: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingTop: 10, paddingBottom: 16 },
-  footerText: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
-  hint: { fontFamily: fonts.bodyBold, fontSize: 14 },
+  // The shadow sits on a white rounded view (iOS needs a background to draw it); the card inside clips.
+  lift: { backgroundColor: WHITE, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 12 }, elevation: 4 },
+  card: { backgroundColor: WHITE, overflow: 'hidden', borderWidth: 1, borderColor: LINE },
+  head: { overflow: 'hidden' },
+  headFull: { paddingTop: 20, paddingHorizontal: 22, paddingBottom: 32, gap: 18 },
+  headCompact: { height: 148, paddingTop: 18, paddingHorizontal: 20, paddingBottom: 28, gap: 14 },
+  headTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  headLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+  shrink: { flexShrink: 1, gap: 1 },
+  badge: { width: 40, height: 40, borderRadius: 20, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
+  badgeCompact: { width: 36, height: 36, borderRadius: 18 },
+  typeLabel: { fontSize: 13, fontWeight: '700', letterSpacing: 1, color: WHITE },
+  small: { fontSize: 12 },
+  headSub: { fontSize: 13, fontWeight: '500', color: WHITE },
+  when: { alignItems: 'flex-end', gap: 1 },
+  date: { fontSize: 18, fontWeight: '600', color: WHITE },
+  route: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  code: { fontSize: 50, lineHeight: 52, fontWeight: '800', letterSpacing: -1.5, color: WHITE },
+  flightPath: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  pathDash: { flex: 1, height: 0, borderTopWidth: 2, borderStyle: 'dashed', borderColor: WHITE },
+  tilt: { transform: [{ rotate: '45deg' }] },
+  titleBox: { gap: 3 },
+  title: { fontSize: 24, lineHeight: 27, fontWeight: '800', letterSpacing: -0.6, color: WHITE },
+  half: { position: 'absolute', left: 0, right: 0, height: '50%' },
+  perfRow: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  notch: { borderWidth: 1, borderColor: LINE },
+  perfDash: { flex: 1, height: 0, borderTopWidth: 2, borderStyle: 'dashed', borderColor: DASH, marginHorizontal: 8 },
+  body: { paddingTop: 8, paddingHorizontal: 22, paddingBottom: 22, gap: 18 },
+  bodyCompact: { paddingTop: 6, paddingHorizontal: 20, paddingBottom: 18, gap: 14 },
+  codeBox: { alignItems: 'center', gap: 10 },
+  codeSlot: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  placeholder: { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center' },
+  caption: { fontSize: 12, fontWeight: '500', color: SOFT },
+  grid: { gap: 16 },
+  gridRow: { flexDirection: 'row', gap: 12 },
+  cell: { alignItems: 'center', gap: 3 },
+  cellLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, color: SOFT, textAlign: 'center' },
+  cellValue: { fontSize: 20, fontWeight: '700', color: INK, textAlign: 'center', fontVariant: ['tabular-nums'] },
+  cellValueLong: { fontSize: 17 },
+  pill: { color: WHITE, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 1, fontSize: 18 },
 });

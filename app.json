@@ -29,7 +29,7 @@
     "android": {
       "package": "com.jesjg.stash",
       "adaptiveIcon": {
-        "backgroundColor": "#8B3DFF",
+        "backgroundColor": "#9747FF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -63,7 +63,7 @@
         {
           "image": "./assets/splash-icon.png",
           "imageWidth": 160,
-          "backgroundColor": "#8B3DFF"
+          "backgroundColor": "#9747FF"
         }
       ],
       [

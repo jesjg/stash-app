@@ -36,7 +36,7 @@ const SOFT_BG = '#F7F7F7';
 const SOFT_BG_DARK = '#F2F2F2';
 const INK = '#111111';
 const SOFT = '#666666';
-const VIOLET = '#8B3DFF';
+const VIOLET = '#9747FF';
 const SHADOW_ROOM = 32;
 const openStub = (id: string) => router.push({ pathname: '/ticket/[id]', params: { id } });
 

@@ -4,7 +4,7 @@ Copy each part into App Store Connect → Apps → Stash. Character limits are A
 
 ## App information
 
-- **Name** (30): Stash
+- **Name** (30): Stash Tickets (the name under the icon on the phone stays "Stash")
 - **Subtitle** (30): All your tickets in one place
 - **Primary category:** Travel
 - **Secondary category:** Productivity

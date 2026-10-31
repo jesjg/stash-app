@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { addDays, dayKey, daysBetween, toDate } from './dates';
 import { File } from 'expo-file-system';
-import { dbFile, deleteStubFiles, newId, rebase, rootDir, stubDir } from './files';
+import { dbFile, deleteStubFiles, newId, rebase, stubDir } from './files';
 import type { Extracted } from './extract';
 import type { StayFound } from './stay';
 import { cancelReminder, ensurePermission, reminderStatus, scheduleReminder } from './reminders';
@@ -93,8 +93,10 @@ export async function load() {
     if (file.exists) {
       const data = JSON.parse(await file.text());
       stubs = Array.isArray(data.stubs) ? data.stubs : [];
-      settings = { ...DEFAULT_SETTINGS, ...(data.settings ?? {}) };
-      settings.themePhoto = rebase(settings.themePhoto);
+      // The app colour and background photo settings were removed: drop them (and the photo).
+      const { themePhoto, accent: _accent, ...saved } = data.settings ?? {};
+      settings = { ...DEFAULT_SETTINGS, ...saved };
+      deleteThemePhoto(themePhoto);
       seenShots = Array.isArray(data.seenShots) ? data.seenShots : [];
       lockCard = data.lockCard ?? null;
       history = Array.isArray(data.history) ? data.history : [];
@@ -106,6 +108,15 @@ export async function load() {
   const moved = JSON.stringify(fixed) !== JSON.stringify(stubs);
   set({ loaded: true, history, stubs: sortStubs(fixed), settings, seenShots, lockCard });
   if (moved) persist();
+}
+
+/** Delete the old background photo for all tickets, if one was saved. */
+function deleteThemePhoto(uri: string | undefined) {
+  if (!uri) return;
+  try {
+    const f = new File(rebase(uri) ?? uri);
+    if (f.exists) f.delete();
+  } catch {}
 }
 
 /** Trips were removed: forget which trip a ticket was put in. */
@@ -446,23 +457,3 @@ export async function setCover(id: string, photoUri: string | null) {
   persist();
 }
 
-/** Set (copying it into Stash) or clear the background photo used for every ticket card. */
-export async function setThemePhoto(photoUri: string | null) {
-  const old = state.settings.themePhoto;
-  let themePhoto: string | undefined;
-  if (photoUri) {
-    const ext = photoUri.match(/\.(jpe?g|png|heic|webp)$/i)?.[1]?.toLowerCase() ?? 'jpg';
-    rootDir().create({ intermediates: true, idempotent: true });
-    const dest = new File(rootDir(), `theme-${Date.now()}.${ext}`);
-    await new File(photoUri).copy(dest);
-    themePhoto = dest.uri;
-  }
-  if (old) {
-    try {
-      const f = new File(old);
-      if (f.exists) f.delete();
-    } catch {}
-  }
-  set({ settings: { ...state.settings, themePhoto } });
-  persist();
-}

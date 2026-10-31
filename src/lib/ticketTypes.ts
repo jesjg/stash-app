@@ -1,19 +1,21 @@
 import type { IconName } from '../components/Icon';
 import { KINDS, type Kind } from './types';
 
-/** How a ticket type looks: header colour (white text on it passes 4.5:1) and badge icon. */
+/** How a ticket type looks: header colour (white, bold header text sits on it) and badge icon. */
 export type TicketType = { color: string; icon: IconName; label: string };
 
-const FLIGHT = '#2563FF';
+// The final ticket colours, matched to the logo (pink, blue, green, violet) plus orange and aqua.
+// All ticket colours live here so a palette setting can swap them later.
+const FLIGHT = '#1E7BFF';
 
 const STYLES: Partial<Record<Kind, Omit<TicketType, 'label'>>> = {
   flight: { color: FLIGHT, icon: 'typePlane' },
-  train: { color: '#00825A', icon: 'typeTrain' },
-  event: { color: '#E0007A', icon: 'typeTicket' },
-  gig: { color: '#E0007A', icon: 'typeTicket' },
-  activity: { color: '#D14000', icon: 'typeMountain' },
-  visa: { color: '#007A9E', icon: 'typePassport' },
-  stay: { color: '#8B3DFF', icon: 'typeBed' },
+  train: { color: '#00D16C', icon: 'typeTrain' },
+  event: { color: '#FF2D95', icon: 'typeTicket' },
+  gig: { color: '#FF2D95', icon: 'typeTicket' },
+  activity: { color: '#FF6B1F', icon: 'typeMountain' },
+  visa: { color: '#00B4E0', icon: 'typePassport' },
+  stay: { color: '#9747FF', icon: 'typeBed' },
 };
 
 /** Types without their own colour use Flight blue and a plain ticket icon. */

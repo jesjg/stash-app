@@ -212,7 +212,7 @@ function findDetails(text: string): Detail[] {
     }
 
     // "Name : Jes Jones Gardner, Mr." or "Passenger: Ms Gabija Dubickaite"
-    const who = lines[i].match(/^(?:name|passenger(?:\s+name)?|lead\s+passenger|guest(?:\s+name)?|traveller)\s*:\s*(?:(?:mr|mrs|ms|miss|dr)\.?\s+)?([\p{L}][\p{L} .'-]{2,40}?)(?:,?\s*(?:mr|mrs|ms|miss|dr)\.?)?\s*$/iu);
+    const who = lines[i].split('\t').map((c) => c.trim().match(/^(?:name|passenger(?:\s+name)?|lead\s+passenger|guest(?:\s+name)?|traveller)\s*:\s*(?:(?:mr|mrs|ms|miss|dr)\.?\s+)?([\p{L}][\p{L} .'-]{2,40}?)(?:,?\s*(?:mr|mrs|ms|miss|dr)\.?)?\s*$/iu)).find(Boolean);
     if (who && who[1].trim().split(/\s+/).length >= 2) {
       out.push({ label: 'Passenger', value: who[1].trim() });
       continue;
@@ -386,10 +386,12 @@ function findTime(lines: string[], dateLine: number | undefined): string | undef
       }
     }
   }
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i];
+  // Each piece of a line on its own, so "Trip … 09:00" isn't skipped for sharing a line with "Check-in Time".
+  const cells = lines.flatMap((l) => l.split('\t').map((c) => c.trim()).filter(Boolean));
+  for (let i = 0; i < cells.length; i++) {
+    const l = cells[i];
     if (TIME_GOOD.test(l) && !TIME_DOORS.test(l) && !BAD_CONTEXT.test(l)) {
-      const t = timeOn(l) ?? (l.length < 30 ? timeOn(lines[i + 1] ?? '') : null);
+      const t = timeOn(l) ?? (l.length < 30 ? timeOn(cells[i + 1] ?? '') : null);
       if (t) return t;
     }
   }
@@ -466,8 +468,11 @@ function findRoute(lines: string[]): string | undefined {
     /^([\p{L} .'()-]{3,40}?)\s+(?:–|—|-|to)\s+([\p{L} .'()-]{3,40})$/u,
   ];
   // A line labelled as the route ("Route : Bangsal - Padang Bai") beats any other line that looks like one.
-  const labelled = lines.findIndex((l) => /^(route|journey|trip|sailing)\s*:/i.test(l) && ARROW.some((re) => re.test(l.replace(/^[^:]*:\s*/, '').trim())));
-  const ordered = labelled >= 0 ? [lines[labelled], ...lines] : lines;
+  // Just that piece of the line: the phone may add a watermark word after it on the same line.
+  const routeCell = (l: string) =>
+    l.split('\t').find((c) => /^(route|journey|trip|sailing)\s*:/i.test(c.trim()) && ARROW.some((re) => re.test(c.trim().replace(/^[^:]*:\s*/, ''))));
+  const labelled = lines.findIndex((l) => routeCell(l));
+  const ordered = labelled >= 0 ? [routeCell(lines[labelled])!.trim(), ...lines] : lines;
   ordered.forEach((l, i) => {
     const f = l.match(/^(from|departure port|origin|von|da|desde|από)\b[:\s]*(.*)$/i);
     const t = l.match(/^(to|arrival port|destination|nach|a|hasta|προς)\b[:\s]*(.*)$/i);
@@ -624,7 +629,8 @@ export function findCompany(text: string): string | undefined {
     if (/\bget\s*your\s*guide\b|\bGYG[A-Z0-9]{6,}\b/i.test(text)) return 'GetYourGuide';
     if (/\bsplit\s*save\b/i.test(text)) return 'SplitSave';
     // Not one we know: a heading that names a ferry line, airline or coach company ("EKAJAYA FAST FERRY").
-    const named = text.match(OPERATOR_RE);
+    // Each piece of a line on its own: the phone may put a watermark word on the same line.
+    const named = text.replace(/\t/g, '\n').match(OPERATOR_RE);
     return named ? titleCase(named[1].replace(/\s+/g, ' ')) : undefined;
   }
   const found = m[1].replace(/\s+/g, ' ').toLowerCase();

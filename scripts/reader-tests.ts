@@ -152,6 +152,29 @@ for (const split of [false, true]) {
   }
 }
 
+// The same ticket with the phone joining things on one line: watermark words next to the company and
+// the route, the trip time next to "Area :", "(One way)" next to the name.
+{
+  const page = (name: string) =>
+    ['TICKET', 'No. Booking\tADULT', 'EKJ26106988\tTICKET', 'ADULT\tEKAJAYA FAST FERRY', 'Agent\tTicket No. EKJ26106988-1-1',
+      'BEJ - ekajayafastferry.com (Repeate...\tDEPARTURE TICKET', `Name : ${name}\t(One way)`, '(Adult)\tTICKET', 'Date : 19 Nov 2026\tADULT\tPickup : -',
+      'Check-in Time: 08.00 - 08.30\tTrip : Trip 1 09.00 (Per 27 June) - 09:00', 'Location :', 'Route : Lembongan (Yellow Bridge) - Gili Trawangan\tTICKET'].join('\n');
+  const got = extractDetails([{ text: page('Jes Jones Gardner, Mr.'), codes: 1 }, { text: page('Gabija Dubickaite, Mrs.'), codes: 1 }], 2, today);
+  const value = (label: string, list = got.shared) => list.find((d) => d.label === label)?.value;
+  const check: [string, unknown, unknown][] = [
+    ['title', got.title, 'Lembongan → Gili Trawangan'],
+    ['time', got.time, '09:00'],
+    ['company', value('Company'), 'Ekajaya Fast Ferry'],
+    ['passenger', value('Passenger', got.perTicket[0]), 'Jes Jones Gardner'],
+  ];
+  for (const [field, g, w] of check) {
+    if (g !== w) {
+      bad++;
+      console.log(`✗ Ekajaya ferry 2 (lines joined): ${field} was ${JSON.stringify(g)}, wanted ${JSON.stringify(w)}`);
+    }
+  }
+}
+
 // Words in sentences that aren't details: "entry remains…", "class includes…".
 const noDetails: [string, string, string][] = [
   ['Indonesia e-VOA disclaimer', 'Issuance of e-VOA does not guarantee entry to the Republic of Indonesia, the decision of entry remains the right of the Immigration Officer', 'Entrance'],
@@ -191,5 +214,5 @@ for (const [want, text] of kinds) {
     console.log(`✗ kind: ${JSON.stringify(text.split('\n')[0])} was ${got}, wanted ${want}`);
   }
 }
-console.log(bad ? `${bad} wrong` : `All ${cases.length + 5 + noDetails.length + kept.length + kinds.length} tickets read right`);
+console.log(bad ? `${bad} wrong` : `All ${cases.length + 6 + noDetails.length + kept.length + kinds.length} tickets read right`);
 process.exit(bad ? 1 : 0);

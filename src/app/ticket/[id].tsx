@@ -22,6 +22,7 @@ import { Icon } from '../../components/Icon';
 import { fitCode, WalletTicket } from '../../components/WalletTicket';
 import { RoundButton } from '../../components/RoundButton';
 import { showToast } from '../../components/Toast';
+import { readStubText } from '../../lib/importer';
 import { canSendAll, sendAll, sendTicket } from '../../lib/send';
 import { groupStubs, isArchived, isPast, removeStub, setUsed, useStore } from '../../lib/store';
 import type { Stub } from '../../lib/types';
@@ -128,6 +129,19 @@ export default function TicketScreen() {
             },
           ]
         : []),
+      // The raw text the phone read off the ticket, to share when it was read wrong.
+      ...(sample
+        ? []
+        : [
+            {
+              label: 'Send what Stash read',
+              run: () => {
+                readStubText(stub)
+                  .then((text) => Share.share({ message: `${stub.title}\n\n${text}` }))
+                  .catch((e) => Alert.alert("Couldn't read the ticket", String(e?.message ?? e)));
+              },
+            },
+          ]),
       {
         label: 'Edit details',
         run: () => router.push({ pathname: '/edit/[id]', params: { id: stub.id } }),

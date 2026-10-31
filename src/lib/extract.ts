@@ -41,7 +41,7 @@ const LABELS: LabelDef[] = [
   { label: 'Doors', words: ['doors', 'doors open', 'gates open', 'einlass', 'check-in closes'], value: TIME_VALUE },
   { label: 'Boarding', words: ['boarding', 'boarding time', 'boards', 'boarding starts'], value: TIME_VALUE },
   { label: 'Gate closes', words: ['gate closes', 'gate close', 'gate closing', 'gate closure'], value: TIME_VALUE },
-  { label: 'Departs', words: ['departs', 'departure', 'departure time', 'dep time', 'std', 'abfahrt', 'partenza', 'salida'], value: TIME_VALUE },
+  { label: 'Departs', words: ['depart', 'departs', 'departure', 'departure time', 'dep time', 'std', 'abfahrt', 'partenza', 'salida'], value: TIME_VALUE },
   { label: 'Steps', wordValues: true, words: ['steps', 'boarding steps', 'board via', 'boarding door'] },
   { label: 'Terminal', wordValues: true, words: ['terminal', 'term'] },
   { label: 'Group', words: ['boarding group', 'group', 'zone', 'boarding zone', 'priority'], perTicket: true },
@@ -80,7 +80,7 @@ function labelAt(cell: string): { def: LabelDef; rest: string } | null {
 }
 
 const STOP = new Set(
-  'the and via at of in on for to from by is are be this that your you with open opens opening closes closed fee fees number information details detail time date only please see free all any none here there per includes include included including remains remain must may will can not required requirements subject valid applies apply adult adults child children infant senior ticket tickets'.split(' '),
+  'the and via at of in on for to from by is are be this that your you with open opens opening closes closed fee fees number information details detail time date only please see free all any none here there per includes include included including remains remain must may will can not required requirements subject valid applies apply adult adults child children infant senior ticket tickets sequence queue'.split(' '),
 );
 
 // Theatre and venue areas: "Stalls", "Dress Circle", "Grand Circle", "Upper Tier", "Box C".
@@ -209,6 +209,13 @@ function findDetails(text: string): Detail[] {
         i++;
         continue;
       }
+    }
+
+    // "Front Door" / "Rear Door" under Boarding (Ryanair): which door to board by.
+    const door = lines[i].match(/^(front|rear|back|middle)\s+doors?$/i);
+    if (door) {
+      out.push({ label: 'Door', value: door[1].charAt(0).toUpperCase() + door[1].slice(1).toLowerCase() });
+      continue;
     }
 
     // "Name : Jes Jones Gardner, Mr." or "Passenger: Ms Gabija Dubickaite"
@@ -701,6 +708,32 @@ export function printedName(barcodeName: string, text: string): string | undefin
               .replace(/(^|[\s'\-])\p{L}/gu, (c) => c.toUpperCase());
           }
         }
+      }
+    }
+  }
+  // The barcode only has room for 20 letters ("JONESGARDNER/JESDANI"), and the printed name may wrap
+  // ("Jes Daniel Anthony" / "Jonesgardner"): find the surname, then the given names before it that the
+  // barcode's (cut-short) given names start.
+  const surname = key(parts[parts.length - 1]);
+  const given = key(parts.slice(0, -1).join(''));
+  const words = text
+    .split(/[\t\n]/)
+    .flatMap((c) => c.trim().split(/\s+/))
+    .filter((w) => /^[\p{L}'-]+$/u.test(w) && !TITLE.test(w));
+  for (let i = 0; i < words.length; i++) {
+    if (key(words[i]) !== surname || given.length < 2) continue;
+    for (let k = 1; k <= 4 && k <= i; k++) {
+      const names = words.slice(i - k, i);
+      const joined = key(names.join(''));
+      if (joined.startsWith(given) && joined.length > given.length - 1) {
+        // Keep adding names while they still fit ("Jes", "Jes Daniel", "Jes Daniel Anthony").
+        let best = names;
+        for (let m = k + 1; m <= 4 && m <= i; m++) {
+          const more = words.slice(i - m, i);
+          if (!key(more.join('')).startsWith(given)) break;
+          best = more;
+        }
+        return [...best, words[i]].join(' ').toLowerCase().replace(/(^|[\s'\-])\p{L}/gu, (c) => c.toUpperCase());
       }
     }
   }

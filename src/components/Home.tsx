@@ -140,9 +140,9 @@ export function Home() {
               onScroll={(e) => setSlide(Math.round(e.nativeEvent.contentOffset.x / (cardW + CARD_GAP)))}
               scrollEventThrottle={32}
             >
-              {next.map((s) => (
+              {next.map((s, i) => (
                 <View key={s.id} style={{ width: cardW }}>
-                  <NextCard stub={s} />
+                  <NextCard stub={s} active={i === Math.min(slide, next.length - 1)} />
                 </View>
               ))}
             </ScrollView>
@@ -258,10 +258,11 @@ export function Home() {
 }
 
 
-function NextCard({ stub }: { stub: Stub }) {
+function NextCard({ stub, active }: { stub: Stub; active: boolean }) {
   return (
     <WalletTicket
       compact
+      active={active}
       stub={stub}
       onPress={() => openStub(stub.id)}
     />

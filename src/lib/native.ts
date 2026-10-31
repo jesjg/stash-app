@@ -13,7 +13,6 @@ const has = (name: string) => {
 
 export const hasHaptics = has('ExpoHaptics');
 export const hasClipboard = has('ExpoClipboard');
-export const hasMotion = has('ExponentDeviceMotion');
 
 /** A small buzz. 'tap' for swipes and presses, 'success' for finishing something. */
 export function haptic(kind: 'tap' | 'success' | 'tear' = 'tap') {

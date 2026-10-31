@@ -24,7 +24,7 @@ export default function Settings() {
     }, []),
   );
   const lockScreen = useStore((s) => s.settings.lockScreen);
-  const holoAll = useStore((s) => s.settings.holoAll);
+  const sparkles = useStore((s) => s.settings.sparkles);
   const shots = useStore((s) => s.settings.screenshots);
   const insets = useSafeAreaInsets();
 
@@ -41,10 +41,10 @@ export default function Settings() {
         <Text style={label}>Appearance</Text>
         <View style={styles.row}>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={styles.rowText}>Holographic tickets</Text>
-            <Text style={styles.note}>A foil shimmer on every ticket.</Text>
+            <Text style={styles.rowText}>Sparkle tickets</Text>
+            <Text style={styles.note}>A little sparkle on every ticket.</Text>
           </View>
-          <Toggle value={!!holoAll} onValueChange={(v) => setSettings({ holoAll: v })} accessibilityLabel="Holographic tickets" />
+          <Toggle value={!!sparkles} onValueChange={(v) => setSettings({ sparkles: v })} accessibilityLabel="Sparkle tickets" />
         </View>
       </View>
 

@@ -97,8 +97,8 @@ export type Settings = {
   screenshots?: 'on' | 'off';
   /** Pin today's ticket to the lock screen as a Live Activity. */
   lockScreen: boolean;
-  /** Holographic finish on every ticket. */
-  holoAll?: boolean;
+  /** Sparkles on every ticket's coloured header. Off unless the person turns it on. */
+  sparkles?: boolean;
   /** The how-it-works slides have been shown. */
   introSeen?: boolean;
 };

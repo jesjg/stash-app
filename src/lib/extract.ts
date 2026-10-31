@@ -362,7 +362,17 @@ export function parseTime(s: string): string | null {
 const TIME_GOOD = /\b(depart|departure|departs|dep|start|starts|show|kick.?off|performance|time|sailing|abfahrt|partenza|salida|αναχώρηση)\b/i;
 const TIME_DOORS = /\b(doors|gates open|einlass|check.?in|boarding)\b/i;
 
+/**
+ * Airline style, day and month run together in capitals, then a four-digit time: "KM 3118 R 24JUN 1555" → 15:55.
+ * Only that form, so "26 Nov 2026" never reads its year as 20:26.
+ */
+const COMPACT_TIME = /\b\d{1,2}(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(?:\d{2})?\s+([01]\d|2[0-3])([0-5]\d)\b/;
+
 function findTime(lines: string[], dateLine: number | undefined): string | undefined {
+  for (const l of lines) {
+    const m = BAD_CONTEXT.test(l) ? null : l.match(COMPACT_TIME);
+    if (m) return `${m[1]}:${m[2]}`;
+  }
   const timeOn = (l: string) => (BAD_CONTEXT.test(l) ? null : parseTime(l));
   // Same line as the event date, or just below it.
   if (dateLine != null) {
@@ -391,7 +401,7 @@ function findTime(lines: string[], dateLine: number | undefined): string | undef
 // Which kind each known company sells. A company on the ticket is the strongest clue there is.
 const COMPANY_KIND: Record<string, Kind> = {};
 const kindFor = (k: Kind, names: string[]) => names.forEach((n) => (COMPANY_KIND[n.toLowerCase()] = k));
-kindFor('flight', ['Jet2', 'easyJet', 'Ryanair', 'British Airways', 'Wizz Air', 'Aegean', 'Sky Express', 'Olympic Air', 'Lufthansa', 'KLM', 'Air France', 'Vueling', 'Iberia', 'Aer Lingus', 'Emirates', 'Qatar Airways', 'Virgin Atlantic', 'Norwegian', 'SAS', 'Swiss', 'Austrian Airlines', 'ITA Airways', 'Air New Zealand', 'Loganair', 'Eurowings', 'Transavia', 'Volotea', 'Turkish Airlines']);
+kindFor('flight', ['KM Malta Airlines', 'Air Malta', 'Jet2', 'easyJet', 'Ryanair', 'British Airways', 'Wizz Air', 'Aegean', 'Sky Express', 'Olympic Air', 'Lufthansa', 'KLM', 'Air France', 'Vueling', 'Iberia', 'Aer Lingus', 'Emirates', 'Qatar Airways', 'Virgin Atlantic', 'Norwegian', 'SAS', 'Swiss', 'Austrian Airlines', 'ITA Airways', 'Air New Zealand', 'Loganair', 'Eurowings', 'Transavia', 'Volotea', 'Turkish Airlines']);
 kindFor('ferry', ['Ionian Lines', 'Kefalonian Lines', 'Levante Ferries', 'Minoan Lines', 'ANEK', 'Blue Star Ferries', 'Seajets', 'Hellenic Seaways', 'Superfast Ferries', 'Golden Star Ferries', 'Ferryhopper', 'Brittany Ferries', 'P&O Ferries', 'Stena Line', 'DFDS', 'Irish Ferries', 'Red Funnel', 'Wightlink', 'CalMac', 'Condor Ferries', 'Grimaldi', 'Moby', 'Tirrenia', 'Corsica Ferries', 'Baleària']);
 kindFor('train', ['SplitSave', 'TrainPal', 'Seatfrog', 'Raileasy', 'SplitMyFare', 'Eurostar', 'Trainline', 'LNER', 'GWR', 'Avanti West Coast', 'CrossCountry', 'ScotRail', 'Southern', 'Thameslink', 'Northern', 'TransPennine Express', 'Southeastern', 'South Western Railway', 'Chiltern Railways', 'Trenitalia', 'Italo', 'SNCF', 'Deutsche Bahn', 'ÖBB', 'Renfe', 'Hellenic Train']);
 kindFor('bus', ['FlixBus', 'National Express', 'Megabus', 'KTEL']);
@@ -578,6 +588,7 @@ const COMPANIES = [
   'Jet2', 'easyJet', 'Ryanair', 'British Airways', 'Wizz Air', 'TUI', 'Aegean', 'Sky Express', 'Olympic Air', 'Lufthansa', 'KLM',
   'Air France', 'Vueling', 'Iberia', 'Aer Lingus', 'Emirates', 'Qatar Airways', 'Virgin Atlantic', 'Norwegian', 'SAS', 'Swiss',
   'Austrian Airlines', 'ITA Airways', 'Air New Zealand', 'Loganair', 'Eurowings', 'Transavia', 'Volotea', 'Turkish Airlines',
+  'KM Malta Airlines', 'Air Malta',
   // ferries
   'Ionian Lines', 'Kefalonian Lines', 'Levante Ferries', 'Minoan Lines', 'ANEK', 'Blue Star Ferries', 'Seajets', 'Hellenic Seaways',
   'Superfast Ferries', 'Golden Star Ferries', 'Ferryhopper', 'Brittany Ferries', 'P&O Ferries', 'Stena Line', 'DFDS', 'Irish Ferries',
@@ -703,6 +714,15 @@ const PER_TICKET = new Set([...LABELS.filter((l) => l.perTicket).map((l) => l.la
  * @param pages each page's text and how many codes were found on it, in order
  * @param ticketCount total tickets the importer created
  */
+/** IATA codes of airlines people fly from the UK and Europe, for boarding passes that don't spell the name out. */
+const AIRLINE_CODES: Record<string, string> = {
+  U2: 'easyJet', EC: 'easyJet', DS: 'easyJet', FR: 'Ryanair', RK: 'Ryanair', BA: 'British Airways', W6: 'Wizz Air', W4: 'Wizz Air',
+  W9: 'Wizz Air', LS: 'Jet2', BY: 'TUI', TB: 'TUI', A3: 'Aegean', GQ: 'Sky Express', OA: 'Olympic Air', LH: 'Lufthansa', KL: 'KLM',
+  AF: 'Air France', VY: 'Vueling', IB: 'Iberia', EI: 'Aer Lingus', EK: 'Emirates', QR: 'Qatar Airways', VS: 'Virgin Atlantic',
+  DY: 'Norwegian', D8: 'Norwegian', SK: 'SAS', LX: 'Swiss', OS: 'Austrian Airlines', AZ: 'ITA Airways', NZ: 'Air New Zealand',
+  LM: 'Loganair', EW: 'Eurowings', HV: 'Transavia', TO: 'Transavia', V7: 'Volotea', TK: 'Turkish Airlines', KM: 'KM Malta Airlines',
+};
+
 /** Travel documents say what they are: "Bali Tourist Levy", "Indonesia Visa on Arrival". */
 function documentTitle(text: string): string | undefined {
   const doc = /levy\s+voucher|tourist\s+levy|tourism\s+levy/i.test(text)
@@ -784,7 +804,8 @@ export function extractDetails(pages: PageText[], ticketCount: number, today = n
   const startTime = departs?.value ?? time ?? doors?.value;
   if (doors && doors.value === startTime) shared.splice(shared.indexOf(doors), 1);
 
-  const company = findCompany(allText);
+  // Not named in the text: the airline from the flight number in the barcode ("KM3118" → KM Malta Airlines).
+  const company = findCompany(allText) ?? (pass ? AIRLINE_CODES[pass.flight.slice(0, 2).toUpperCase()] : undefined);
   if (company && !shared.some((d) => d.label === 'Company')) shared.unshift({ label: 'Company', value: company });
 
   const bp = pass;

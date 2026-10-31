@@ -107,6 +107,27 @@ for (const split of [false, true]) {
   }
 }
 
+// KM Malta Airlines paper boarding pass (photo): time printed "24JUN 1555", airline only as a logo.
+{
+  const text = ['Malta International Airport', 'KM MALTA\tBoarding Pass', 'JONES GARDNEJES DANI', 'MALTA\tKM 3118 R 24JUN 1555', 'LONDON GATWICK\tTo LONDON GATWICK',
+    'Flight\tClass Date\tTime', 'KM 3118 R 24JUN 1555', 'Gate\tBoarding Time\tSeat', '14C/ 090\t1525 14C\tXXX', 'ECONOMY VALUE', 'kmmaltairlines.com\t5BU\tGFELCE'].join('\n');
+  const pass = 'M1' + 'JONES GARDNEJES/DANI' + 'E' + 'GFELCE ' + 'MLALGW' + 'KM ' + '3118 ' + '175' + 'R' + '014C' + '0090 ' + '100';
+  const got = extractDetails([{ text, codes: 1, payloads: [pass] }], 1, today);
+  const value = (label: string, list = got.shared) => list.find((d) => d.label === label)?.value;
+  const check: [string, unknown, unknown][] = [
+    ['title', got.title, 'MLA → LGW'],
+    ['time', got.time, '15:55'],
+    ['company', value('Company'), 'KM Malta Airlines'],
+    ['seat', value('Seat', got.perTicket[0]), '14C'],
+  ];
+  for (const [field, g, w] of check) {
+    if (g !== w) {
+      bad++;
+      console.log(`✗ KM Malta boarding pass: ${field} was ${JSON.stringify(g)}, wanted ${JSON.stringify(w)}`);
+    }
+  }
+}
+
 // Words in sentences that aren't details: "entry remains…", "class includes…".
 const noDetails: [string, string, string][] = [
   ['Indonesia e-VOA disclaimer', 'Issuance of e-VOA does not guarantee entry to the Republic of Indonesia, the decision of entry remains the right of the Immigration Officer', 'Entrance'],
@@ -146,5 +167,5 @@ for (const [want, text] of kinds) {
     console.log(`✗ kind: ${JSON.stringify(text.split('\n')[0])} was ${got}, wanted ${want}`);
   }
 }
-console.log(bad ? `${bad} wrong` : `All ${cases.length + 3 + noDetails.length + kept.length + kinds.length} tickets read right`);
+console.log(bad ? `${bad} wrong` : `All ${cases.length + 4 + noDetails.length + kept.length + kinds.length} tickets read right`);
 process.exit(bad ? 1 : 0);

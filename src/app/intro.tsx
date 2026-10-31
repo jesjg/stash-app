@@ -322,8 +322,8 @@ const art = StyleSheet.create({
 
   mail: { width: '100%', maxWidth: 330, gap: 10 },
   step: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: colors.paper, borderRadius: 14, padding: 12 },
-  stepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
-  stepNumText: { ...font.monoBold, fontSize: 13, color: colors.accent },
+  stepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  stepNumText: { ...font.monoBold, fontSize: 13, color: colors.onAccent },
   stepText: { ...font.bodyBold, fontSize: 15, color: colors.ink, marginBottom: 8, marginTop: 3 },
   attach: {
     flexDirection: 'row',

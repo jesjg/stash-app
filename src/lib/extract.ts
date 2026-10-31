@@ -48,7 +48,7 @@ const LABELS: LabelDef[] = [
   { label: 'Flight', words: ['flight', 'flight no', 'flight number', 'flug', 'volo', 'vuelo', 'vol'], value: /^[A-Z0-9]{2,3}\s?\d{1,4}[A-Z]?$/i },
   {
     label: 'Ref',
-    words: ['booking reference', 'booking ref', 'booking no', 'booking number', 'booking code', 'reference', 'ref', 'order', 'order no', 'order number', 'confirmation', 'confirmation code', 'pnr', 'reservation', 'reservation no', 'ticket no', 'ticket number', 'visa number', 'visa no', 'application number', 'application no', 'permit number', 'authorisation number', 'authorization number', 'buchungsnummer', 'κωδικός κράτησης'],
+    words: ['booking reference', 'booking ref', 'booking no', 'no. booking', 'booking number', 'booking code', 'reference', 'ref', 'order', 'order no', 'order number', 'confirmation', 'confirmation code', 'pnr', 'reservation', 'reservation no', 'ticket no', 'ticket number', 'visa number', 'visa no', 'application number', 'application no', 'permit number', 'authorisation number', 'authorization number', 'buchungsnummer', 'κωδικός κράτησης'],
     value: REF,
   },
 ];
@@ -203,6 +203,13 @@ function findDetails(text: string): Detail[] {
       }
     }
 
+    // "Name : Jes Jones Gardner, Mr." or "Passenger: Ms Gabija Dubickaite"
+    const who = lines[i].match(/^(?:name|passenger(?:\s+name)?|lead\s+passenger|guest(?:\s+name)?|traveller)\s*:\s*(?:(?:mr|mrs|ms|miss|dr)\.?\s+)?([\p{L}][\p{L} .'-]{2,40}?)(?:,?\s*(?:mr|mrs|ms|miss|dr)\.?)?\s*$/iu);
+    if (who && who[1].trim().split(/\s+/).length >= 2) {
+      out.push({ label: 'Passenger', value: who[1].trim() });
+      continue;
+    }
+
     // Every label on the line, each taking the text up to the next label as its value:
     // "Row G Seat 5", "Dep 08:15  Platform 4", "Coach C\tSeat 42".
     const hits = [...lines[i].matchAll(INLINE_RE)];
@@ -221,9 +228,15 @@ function findDetails(text: string): Detail[] {
       // the label isn't its value; a printed label has a colon, or a code with digits after it.
       const prose = lines[i].split(/\s+/).length >= 6 && !/[:#]\s*$/.test(m[0]);
       if (v && prose && !/\d/.test(v) && !/^[A-Z]{1,3}$/.test(v)) v = null;
-      // Label alone at the end of a line: value on the next line, if that line isn't labels.
-      if (!v && k === hits.length - 1 && !lines[i].slice(startV).trim() && lines[i + 1] && !INLINE_RE_TEST.test(lines[i + 1])) {
-        v = cleanValue(def, lines[i + 1]);
+      // Label alone at the end of a line: value on the next line, if that line isn't labels
+      // (or the one after, when a watermark like "ADULT TICKET" got read in between).
+      if (!v && k === hits.length - 1 && !lines[i].slice(startV).trim()) {
+        for (const next of [lines[i + 1], lines[i + 2]]) {
+          // Another label ("Location :") means this one was left blank.
+          if (!next || INLINE_RE_TEST.test(next) || /:\s*$/.test(next)) break;
+          v = cleanValue(def, next);
+          if (v) break;
+        }
       }
       if (v) out.push({ label: def.label, value: v });
     });
@@ -292,6 +305,7 @@ export function findDates(lines: string[], today: Date): DateHit[] {
     const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
     const t = new Date(date).getTime();
     if (t >= start - 86_400_000) score += 1; // upcoming beats past
+    if (/\b20\d{2}\b/.test(l)) score += 1; // a full date ("26 Nov 2026") beats a passing mention ("(Per 1 Nov)")
     if (t > start + 2 * 365 * 86_400_000) score -= 2; // far future is likely an expiry
     hits.push({ date, line, score });
   };
@@ -438,9 +452,9 @@ function findRoute(lines: string[]): string | undefined {
     if (f && !from) from = place(f[2]) ?? place(lines[i + 1] ?? '');
     if (t && !to) to = place(t[2]) ?? place(lines[i + 1] ?? '');
     if (from || to) return;
-    // "Cardiff → London", or "SSD - BIS" sitting in one cell of a row
+    // "Cardiff → London", or "SSD - BIS" sitting in one cell of a row ("Route : Bangsal - Padang Bai" too)
     for (const cell of [l.replace(/\t/g, ' '), ...l.split('\t')]) {
-      const c = cell.trim();
+      const c = cell.trim().replace(/^(route|journey|trip|sailing|line)\s*:\s*/i, '');
       const arrow = ARROW.map((re) => c.match(re)).find(Boolean);
       if (arrow && /[A-Z]/.test(arrow[1][0]) && !notPlace(arrow[1]) && !notPlace(arrow[2])) {
         from = place(arrow[1]);
@@ -575,6 +589,9 @@ const COMPANY_RE = new RegExp(
   'iu',
 );
 
+/** A line that is only an operator's name: one to three words, then a word like Ferry, Lines or Airways. */
+const OPERATOR_RE = /^[ \t]*((?:[\p{Lu}][\p{L}&'.-]*[ \t]+){1,3}(?:fast[ \t]+ferry|fast[ \t]+boats?|ferries|ferry|lines|shipping|airlines|airways|railways?|coaches|cruises))[ \t]*$/imu;
+
 /** The airline, ferry line or ticket seller named on the ticket, if it's one we know. */
 export function findCompany(text: string): string | undefined {
   const m = text.match(COMPANY_RE);
@@ -582,7 +599,9 @@ export function findCompany(text: string): string | undefined {
     // Logos OCR badly; some companies give themselves away another way.
     if (/\bget\s*your\s*guide\b|\bGYG[A-Z0-9]{6,}\b/i.test(text)) return 'GetYourGuide';
     if (/\bsplit\s*save\b/i.test(text)) return 'SplitSave';
-    return undefined;
+    // Not one we know: a heading that names a ferry line, airline or coach company ("EKAJAYA FAST FERRY").
+    const named = text.match(OPERATOR_RE);
+    return named ? titleCase(named[1].replace(/\s+/g, ' ')) : undefined;
   }
   const found = m[1].replace(/\s+/g, ' ').toLowerCase();
   return COMPANIES.find((c) => c.toLowerCase() === found) ?? m[1];

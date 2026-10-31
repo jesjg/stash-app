@@ -45,6 +45,40 @@ for (const [name, text, want] of cases) {
     }
   }
 }
+// Ekajaya Fast Ferry (screenshot of a two-passenger PDF, "ADULT TICKET" watermark all over it).
+// The phone read the watermark between "Date :" and the date, so check both layouts.
+const ekajaya = (name: string, split: boolean) =>
+  [
+    'TICKET', 'No. Booking', 'ADULT', 'EKJ26107640', 'TICKET', 'EKAJAYA FAST FERRY', 'TOnCT', 'Agent', 'Ticket No. EKJ26107640-1-1',
+    'BEJ - ekajayafastferry.com (Repeate...', 'DEPARTURE TICKET', `Name : ${name}`, '(One way)', '(Adult)',
+    split ? 'Date :\nADULT\n26 Nov 2026' : 'Date : 26 Nov 2026', 'Pickup : -', 'Trip : Trip 2 11.05 (Per 1 Nov) - 11:05', 'Area :',
+    'Check-in Time: 10.05 - 10.35 ( Check in Location )', 'Location :', 'Route : Bangsal - Padang Bai', 'ADULT', 'TICKET',
+    'Please note that the trip below include stops at Padangbai, Penida, or Lembongan and may take up to 4 hours.',
+  ].join('\n');
+for (const split of [false, true]) {
+  const got = extractDetails(
+    [{ text: ekajaya('Jes Jones Gardner, Mr.', split), codes: 1 }, { text: ekajaya('Gabija Dubickaite, Ms.', split), codes: 1 }],
+    2,
+    today,
+  );
+  const want = { title: 'Bangsal → Padang Bai', kind: 'ferry', date: '2026-11-26', time: '11:05' };
+  const value = (label: string, list = got.shared) => list.find((d) => d.label === label)?.value;
+  const check: [string, unknown, unknown][] = [
+    ...Object.entries(want).map(([k, w]) => [k, got[k as keyof typeof want], w] as [string, unknown, unknown]),
+    ['company', value('Company'), 'Ekajaya Fast Ferry'],
+    ['ref', value('Ref'), 'EKJ26107640'],
+    ['passenger 1', value('Passenger', got.perTicket[0]), 'Jes Jones Gardner'],
+    ['passenger 2', value('Passenger', got.perTicket[1]), 'Gabija Dubickaite'],
+    ['no stray details', [...got.shared, ...got.perTicket.flat()].map((d) => d.label).filter((l) => !['Company', 'Ref', 'Passenger'].includes(l)).join(','), ''],
+  ];
+  for (const [field, g, w] of check) {
+    if (g !== w) {
+      bad++;
+      console.log(`✗ Ekajaya ferry${split ? ' (date split by watermark)' : ''}: ${field} was ${JSON.stringify(g)}, wanted ${JSON.stringify(w)}`);
+    }
+  }
+}
+
 // Words in sentences that aren't details: "entry remains…", "class includes…".
 const noDetails: [string, string, string][] = [
   ['Indonesia e-VOA disclaimer', 'Issuance of e-VOA does not guarantee entry to the Republic of Indonesia, the decision of entry remains the right of the Immigration Officer', 'Entrance'],
@@ -84,5 +118,5 @@ for (const [want, text] of kinds) {
     console.log(`✗ kind: ${JSON.stringify(text.split('\n')[0])} was ${got}, wanted ${want}`);
   }
 }
-console.log(bad ? `${bad} wrong` : `All ${cases.length + noDetails.length + kept.length + kinds.length} tickets read right`);
+console.log(bad ? `${bad} wrong` : `All ${cases.length + 2 + noDetails.length + kept.length + kinds.length} tickets read right`);
 process.exit(bad ? 1 : 0);

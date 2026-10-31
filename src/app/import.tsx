@@ -70,5 +70,5 @@ const styles = StyleSheet.create({
   body: { ...font.body, fontSize: 16, lineHeight: 23, color: colors.ink, textAlign: 'center' },
   reading: { ...font.mono, fontSize: 13, letterSpacing: 1.4, textTransform: 'uppercase', color: colors.inkSoft },
   btn: { marginTop: 8, height: 52, paddingHorizontal: 24, borderRadius: 999, backgroundColor: colors.accent, justifyContent: 'center' },
-  btnText: { ...font.bodyBold, fontSize: 16, color: colors.ink },
+  btnText: { ...font.bodyBold, fontSize: 16, color: colors.onAccent },
 });

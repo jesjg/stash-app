@@ -401,5 +401,5 @@ const styles = StyleSheet.create({
   reminder: { ...font.mono, fontSize: 12, color: colors.inkSoft, marginTop: -10 },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: colors.ground },
   save: { height: 56, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  saveText: { ...font.bodyBold, fontSize: 17, color: colors.ink },
+  saveText: { ...font.bodyBold, fontSize: 17, color: colors.onAccent },
 });

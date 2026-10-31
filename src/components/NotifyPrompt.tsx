@@ -52,7 +52,7 @@ export function NotifyPrompt() {
       <View style={styles.scrim}>
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
           <View style={styles.badge}>
-            <Icon name="ticket" size={26} color={colors.ink} stroke={2.4} />
+            <Icon name="ticket" size={26} color={colors.onAccent} stroke={2.4} />
           </View>
           <Text style={label}>{status === 'off' ? 'Reminders are off' : 'Never miss a ticket'}</Text>
           <Text style={styles.title}>Your ticket, right when you need it</Text>
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   body: { ...font.body, fontSize: 16, lineHeight: 23, color: colors.ink },
   tip: { ...font.mono, fontSize: 12, lineHeight: 18, color: colors.inkSoft },
   primary: { height: 56, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', marginTop: 6 },
-  primaryText: { ...font.bodyBold, fontSize: 17, color: colors.ink },
+  primaryText: { ...font.bodyBold, fontSize: 17, color: colors.onAccent },
   ghost: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   ghostText: { ...font.bodyMedium, fontSize: 15, color: colors.inkSoft },
 });

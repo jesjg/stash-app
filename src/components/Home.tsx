@@ -346,7 +346,7 @@ function EmptyState({ onAdd, onSample }: { onAdd: () => void; onSample: () => vo
             onPress={onAdd}
             style={({ pressed }) => [styles.primary, pressed && { opacity: 0.85 }]}
           >
-            <Icon name="plus" size={18} color={colors.ink} />
+            <Icon name="plus" size={18} color={colors.onAccent} />
             <Text style={styles.primaryText}>Add your first ticket</Text>
           </Pressable>
           <Pressable
@@ -422,5 +422,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  primaryText: { ...font.bodyBold, fontSize: 16, color: colors.ink },
+  primaryText: { ...font.bodyBold, fontSize: 16, color: colors.onAccent },
 });

@@ -81,7 +81,7 @@ export function MailArt() {
             <View key={c} style={[art.appDot, { backgroundColor: c }]} />
           ))}
           <View style={[art.appDot, art.appStash]}>
-            <Icon name="ticket" size={16} color={colors.ink} stroke={2.4} />
+            <Icon name="ticket" size={16} color={colors.onAccent} stroke={2.4} />
           </View>
         </View>
       </Step>
@@ -110,7 +110,7 @@ function ShareArt() {
       ))}
       <Icon name="chevronDown" size={26} color={colors.inkSoft} stroke={2.4} />
       <View style={art.stashPill}>
-        <Icon name="ticket" size={20} color={colors.ink} stroke={2.4} />
+        <Icon name="ticket" size={20} color={colors.onAccent} stroke={2.4} />
         <Text style={art.stashText}>Share → Stash</Text>
       </View>
     </View>
@@ -159,7 +159,7 @@ function LockArt() {
       <Text style={art.date}>Wednesday 14 October</Text>
       <View style={art.note}>
         <View style={art.noteIcon}>
-          <Icon name="ticket" size={16} color={colors.ink} stroke={2.4} />
+          <Icon name="ticket" size={16} color={colors.onAccent} stroke={2.4} />
         </View>
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={art.noteApp}>STASH · now</Text>
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.rule },
   dotOn: { width: 24, backgroundColor: colors.ink },
   primary: { height: 56, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { ...font.bodyBold, fontSize: 17, color: colors.ink },
+  primaryText: { ...font.bodyBold, fontSize: 17, color: colors.onAccent },
   ghost: { minHeight: 36, alignItems: 'center', justifyContent: 'center' },
   ghostText: { ...font.bodyMedium, fontSize: 15, color: colors.inkSoft },
 });
@@ -366,7 +366,7 @@ const art = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 14,
   },
-  stashText: { ...font.bodyBold, fontSize: 17, color: colors.ink },
+  stashText: { ...font.bodyBold, fontSize: 17, color: colors.onAccent },
 
   readCard: { width: '100%', maxWidth: 320 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 18, paddingVertical: 14, rowGap: 14 },

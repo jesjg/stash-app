@@ -50,5 +50,5 @@ const styles = StyleSheet.create({
   body: { ...font.body, fontSize: 15, lineHeight: 22, color: colors.ink },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: colors.ground },
   primary: { height: 56, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { ...font.bodyBold, fontSize: 17, color: colors.ink },
+  primaryText: { ...font.bodyBold, fontSize: 17, color: colors.onAccent },
 });

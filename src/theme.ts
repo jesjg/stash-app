@@ -14,8 +14,10 @@ export const colors = {
   nightText: '#F4F4F0',
   nightSoft: '#B9B9B2',
   nightRule: '#3A3A36',
-  /** The app colour (no longer chosen in Settings). */
-  accent: '#FF5A1F',
+  /** The app colour: the logo's violet. */
+  accent: '#9747FF',
+  /** Text and icons on the app colour (white reads best on violet). */
+  onAccent: '#FFFFFF',
   danger: '#C8321A',
 } as const;
 

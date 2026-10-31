@@ -122,10 +122,10 @@ export default function WebImport() {
           style={({ pressed }) => [styles.capture, pressed && { opacity: 0.85 }]}
         >
           {busy ? (
-            <ActivityIndicator color={colors.ink} />
+            <ActivityIndicator color={colors.onAccent} />
           ) : (
             <>
-              <Icon name="plus" size={18} color={colors.ink} />
+              <Icon name="plus" size={18} color={colors.onAccent} />
               <Text style={styles.captureText}>Capture ticket</Text>
             </>
           )}
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 24,
   },
-  captureText: { ...font.bodyBold, fontSize: 16, color: colors.ink },
+  captureText: { ...font.bodyBold, fontSize: 16, color: colors.onAccent },
   errTitle: { ...font.display, fontSize: 30, color: colors.nightText },
   errBody: { ...font.body, fontSize: 16, lineHeight: 23, color: colors.nightSoft, textAlign: 'center' },
 });

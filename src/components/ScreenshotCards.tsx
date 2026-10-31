@@ -57,7 +57,7 @@ function OptIn() {
           }}
           style={({ pressed }) => [styles.primary, pressed && { opacity: 0.85 }]}
         >
-          {busy ? <ActivityIndicator color={colors.ink} /> : <Text style={styles.primaryText}>Turn on</Text>}
+          {busy ? <ActivityIndicator color={colors.onAccent} /> : <Text style={styles.primaryText}>Turn on</Text>}
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => setSettings({ screenshots: 'off' })} style={styles.ghost}>
           <Text style={styles.ghostText}>Not now</Text>
@@ -96,7 +96,7 @@ function FoundCard({ shot }: { shot: FoundShot }) {
             onPress={add}
             style={({ pressed }) => [styles.primary, styles.small, pressed && { opacity: 0.85 }]}
           >
-            {busy ? <ActivityIndicator color={colors.ink} /> : <Text style={styles.primaryText}>Add</Text>}
+            {busy ? <ActivityIndicator color={colors.onAccent} /> : <Text style={styles.primaryText}>Add</Text>}
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   small: { minHeight: 40, paddingHorizontal: 16 },
-  primaryText: { ...font.bodyBold, fontSize: 15, color: colors.ink },
+  primaryText: { ...font.bodyBold, fontSize: 15, color: colors.onAccent },
   ghost: { minHeight: 44, minWidth: 44, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
   ghostText: { ...font.bodyMedium, fontSize: 15, color: colors.inkSoft },
   found: { flexDirection: 'row', gap: 14, alignItems: 'center' },

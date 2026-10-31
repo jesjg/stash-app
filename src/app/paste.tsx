@@ -81,5 +81,5 @@ const styles = StyleSheet.create({
   tip: { ...font.mono, fontSize: 12, lineHeight: 18, color: colors.inkSoft },
   footer: { paddingHorizontal: 20, paddingTop: 12, backgroundColor: colors.ground },
   save: { height: 56, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  saveText: { ...font.bodyBold, fontSize: 17, color: colors.ink },
+  saveText: { ...font.bodyBold, fontSize: 17, color: colors.onAccent },
 });

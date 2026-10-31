@@ -1,10 +1,3 @@
-import {
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_500Medium,
-  SpaceGrotesk_700Bold,
-} from '@expo-google-fonts/space-grotesk';
-import { SpaceMono_400Regular, SpaceMono_700Bold } from '@expo-google-fonts/space-mono';
-import { useFonts } from 'expo-font';
 import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -18,7 +11,7 @@ import { configureNotifications } from '../lib/reminders';
 import { syncHomeWidget } from '../lib/homeWidget';
 import { syncLockScreen } from '../lib/lockscreen';
 import { checkRecentScreenshots } from '../lib/screenshots';
-import { cleanUp, ensureReminders, load, useStore } from '../lib/store';
+import { ensureReminders, load, useStore } from '../lib/store';
 import { useOtaUpdates } from '../lib/useOtaUpdates';
 import { colors } from '../theme';
 
@@ -39,14 +32,6 @@ function useReminderTaps(ready: boolean) {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
-    StubsDisplay: require('../../assets/fonts/StubsDisplay.ttf'),
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_500Medium,
-    SpaceGrotesk_700Bold,
-    SpaceMono_400Regular,
-    SpaceMono_700Bold,
-  });
   const loaded = useStore((s) => s.loaded);
   const stubs = useStore((s) => s.stubs);
   const lockScreen = useStore((s) => s.settings.lockScreen);
@@ -58,8 +43,7 @@ export default function RootLayout() {
       syncHomeWidget();
     }
   }, [loaded, stubs, lockScreen]);
-  // Never sit on the splash screen: if a font fails, carry on with system fonts.
-  const ready = (fontsLoaded || !!fontError) && loaded;
+  const ready = loaded;
 
   useEffect(() => {
     load().then(() => {
@@ -68,7 +52,6 @@ export default function RootLayout() {
     });
     const sub = AppState.addEventListener('change', (s) => {
       if (s !== 'active') return;
-      cleanUp();
       ensureReminders();
       checkRecentScreenshots();
       syncLockScreen();
@@ -93,7 +76,6 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.ground } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="ticket/[id]" options={{ animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="trip/[id]" />
         <Stack.Screen name="add" options={{ presentation: 'modal' }} />
         <Stack.Screen name="edit/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="original/[id]" options={{ presentation: 'fullScreenModal' }} />

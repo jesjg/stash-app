@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { Stub } from '../lib/types';
-import { colors, fonts } from '../theme';
+import { colors, font } from '../theme';
 
 export const companyOf = (stub: Stub) => stub.details?.find((d) => d.label === 'Company')?.value;
 
@@ -33,6 +33,6 @@ export function CompanyMark({ name, accent, small, onDark }: { name: string; acc
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
   tile: { backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
-  letters: { fontFamily: fonts.monoBold, letterSpacing: 0.5 },
-  name: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink, flexShrink: 1 },
+  letters: { ...font.monoBold, letterSpacing: 0.5 },
+  name: { ...font.bodyBold, fontSize: 16, color: colors.ink, flexShrink: 1 },
 });

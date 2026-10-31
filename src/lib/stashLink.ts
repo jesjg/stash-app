@@ -1,11 +1,11 @@
 // "Add to Stash" links: a company puts the ticket inside the link itself, so no server is needed.
-//   https://imriverjones.github.io/stubs-app/add/#<data>   (web page: opens Stash, or shows the ticket)
+//   https://jesjg.github.io/stash-app/add/#<data>   (web page: opens Stash, or shows the ticket)
 //   stubs://import?d=<data>                                 (opens Stash directly)
 // <data> is the ticket as compact JSON, UTF-8, base64url. The same format is read by docs/add and
 // written by docs/maker, so keep the three in step.
 import type { Detail, Kind } from './types';
 
-export const LINK_PAGE = 'https://imriverjones.github.io/stubs-app/add/';
+export const LINK_PAGE = 'https://jesjg.github.io/stash-app/add/';
 
 export type LinkTicket = {
   v: 1;

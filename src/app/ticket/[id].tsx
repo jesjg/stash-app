@@ -17,25 +17,23 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CodeView } from '../../components/CodeView';
-import { CompanyMark } from '../../components/CompanyMark';
-import { Holo } from '../../components/Holo';
 import { StayCard } from '../../components/StayCard';
 import { Icon } from '../../components/Icon';
-import { Perforated } from '../../components/Perforated';
+import { fitCode, WalletTicket } from '../../components/WalletTicket';
 import { RoundButton } from '../../components/RoundButton';
 import { showToast } from '../../components/Toast';
-import { fmt, relativeDay } from '../../lib/dates';
+import { readStubText } from '../../lib/importer';
 import { canSendAll, sendAll, sendTicket } from '../../lib/send';
-import { groupStubs, isArchived, removeStub, setUsed, useStore } from '../../lib/store';
-import { ticketAccent } from '../../lib/palette';
-import { KINDS, type Stub } from '../../lib/types';
+import { groupStubs, isArchived, isPast, removeStub, setUsed, useStore } from '../../lib/store';
+import type { Stub } from '../../lib/types';
 import { haptic } from '../../lib/native';
 import { useMaxBrightness } from '../../lib/useMaxBrightness';
-import { chooseTripFor, confirmRemove } from '../../lib/tripActions';
-import { tripOf, useTrips } from '../../lib/useTrips';
-import { colors, fonts } from '../../theme';
+import { colors, font } from '../../theme';
 
-const H_PAD = 20;
+const H_PAD = 16;
+/** Ticket screen spec: white screen, black controls, system font. */
+const SCREEN = '#FFFFFF';
+const INK = '#111111';
 
 export default function TicketScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,12 +43,12 @@ export default function TicketScreen() {
   const pager = useRef<ScrollView>(null);
 
   // Swipe on to the next ticket or stay, in date order.
-  // Something opened from Archive stays on its own.
+  // Something opened from Past or Archive stays on its own.
   const { pages, start } = useMemo(() => {
     const opened = all.find((x) => x.id === id);
     if (!opened) return { pages: [] as { stub: Stub; index: number }[], start: 0 };
     const g = groupStubs(all);
-    const list = isArchived(opened) ? [opened] : [...g.today, ...g.upcoming];
+    const list = isArchived(opened) || isPast(opened) ? [opened] : [...g.today, ...g.upcoming];
     if (!list.some((s) => s.id === opened.id)) list.unshift(opened);
     const flat = list.flatMap((s) =>
       s.kind === 'stay' || !s.tickets.length ? [{ stub: s, index: 0 }] : s.tickets.map((_, index) => ({ stub: s, index })),
@@ -67,11 +65,12 @@ export default function TicketScreen() {
   const at = Math.min(current ?? start, Math.max(0, pages.length - 1));
   const stub = pages[at]?.stub;
   const page = pages[at]?.index ?? 0;
-  const trips = useTrips();
   const stubIds = useMemo(() => [...new Set(pages.map((p) => p.stub.id))], [pages]);
   const positioned = useRef(false);
   const [tear] = useState(() => new Animated.Value(0));
   const tearing = useRef(false);
+  // Which page is being torn (it splits in two for the animation).
+  const [tearingAt, setTearingAt] = useState<number | null>(null);
   useKeepAwake();
   useMaxBrightness(stub?.kind !== 'stay');
 
@@ -88,11 +87,8 @@ export default function TicketScreen() {
   }
 
   const count = stub.tickets.length;
-  const cardWidth = width - H_PAD * 2;
-  const codeSize = Math.min(cardWidth - 80, 300);
 
   const more = () => {
-    const trip = tripOf(trips, stub.id);
     const sample = !!stub.sample;
     const isStay = stub.kind === 'stay';
     const items: { label: string; run: () => void; destructive?: boolean }[] = [
@@ -133,14 +129,19 @@ export default function TicketScreen() {
             },
           ]
         : []),
+      // The raw text the phone read off the ticket, to share when it was read wrong.
       ...(sample
         ? []
-        : trip
-          ? [
-              { label: `Open trip: ${trip.name}`, run: () => router.push({ pathname: '/trip/[id]', params: { id: trip.id } }) },
-              { label: 'Take out of trip', run: () => confirmRemove(stub, trip, () => showToast('Taken out of the trip')) },
-            ]
-          : [{ label: 'Add to trip…', run: () => chooseTripFor(stub, trips, () => showToast('Added to the trip')) }]),
+        : [
+            {
+              label: 'Send what Stash read',
+              run: () => {
+                readStubText(stub)
+                  .then((text) => Share.share({ message: `${stub.title}\n\n${text}` }))
+                  .catch((e) => Alert.alert("Couldn't read the ticket", String(e?.message ?? e)));
+              },
+            },
+          ]),
       {
         label: 'Edit details',
         run: () => router.push({ pathname: '/edit/[id]', params: { id: stub.id } }),
@@ -181,11 +182,14 @@ export default function TicketScreen() {
     if (used && stub.kind !== 'stay' && !tearing.current) {
       // Tear the stub off along the dotted line, then file it in Archive.
       tearing.current = true;
+      setTearingAt(at);
+      // Let the split card draw before it starts moving.
+      await new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())));
       haptic('tear');
       await new Promise<void>((done) =>
         Animated.timing(tear, {
           toValue: 1,
-          duration: 700,
+          duration: 900,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }).start(() => done()),
@@ -203,12 +207,12 @@ export default function TicketScreen() {
     <View style={styles.bottomRow}>
       <Pressable
         accessibilityRole="button"
-        accessibilityHint={stub.usedAt ? 'Moves it back to your upcoming tickets' : 'Moves it to Archive'}
+        accessibilityHint={stub.usedAt ? 'Moves it back to your home screen' : 'Moves it to Archive'}
         onPress={() => toggleUsed(stub)}
         style={({ pressed }) => [styles.solid, styles.grow, pressed && { opacity: 0.8 }]}
       >
         <Text style={styles.solidText}>
-          {stub.kind === 'stay' ? (stub.usedAt ? 'Not checked out' : 'Checked out') : stub.usedAt ? 'Not used yet' : 'Used'}
+          {stub.kind === 'stay' ? (stub.usedAt ? 'Not checked out' : 'Checked out') : stub.usedAt ? 'Not used yet' : 'Mark as used'}
         </Text>
       </Pressable>
       {stub.sample ? (
@@ -251,29 +255,29 @@ export default function TicketScreen() {
 
   return (
     <ScrollView
-      style={[styles.screen, { backgroundColor: ticketAccent(stub.color, colors.accent) }]}
+      style={styles.screen}
       contentContainerStyle={[styles.scrollBody, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 16 }]}
     >
       <View style={[styles.topBar, { paddingHorizontal: H_PAD }]}>
-        <RoundButton label="Back" onPress={() => router.back()} size={44}>
+        <RoundButton label="Back" onPress={() => router.back()} size={48} color={INK}>
           <Icon name="back" color={colors.paper} />
         </RoundButton>
         {stubIds.length > 1 ? (
           <View style={styles.counter} accessibilityLabel={`${stubIds.indexOf(stub.id) + 1} of ${stubIds.length}. Swipe for the next.`}>
             <Text style={styles.counterText}>
-              {stubIds.indexOf(stub.id) + 1} / {stubIds.length}
+              {stubIds.indexOf(stub.id) + 1} of {stubIds.length}
             </Text>
           </View>
         ) : count > 1 && stub.kind !== 'stay' ? (
           <View style={styles.counter}>
             <Text style={styles.counterText}>
-              {page + 1} / {count}
+              {page + 1} of {count}
             </Text>
           </View>
         ) : (
           <View />
         )}
-        <RoundButton label="More options" onPress={more} size={44}>
+        <RoundButton label="More options" onPress={more} size={48} color={INK}>
           <Icon name="more" color={colors.paper} />
         </RoundButton>
       </View>
@@ -305,7 +309,9 @@ export default function TicketScreen() {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        style={{ flexGrow: 0 }}
+        // Room for the card's shadow to fade out; the scroll view clips anything outside it.
+        style={{ flexGrow: 0, marginVertical: -32 }}
+        contentContainerStyle={{ paddingVertical: 32 }}
         contentOffset={{ x: width * start, y: 0 }}
         onLayout={() => {
           // Open on the ticket that was tapped (contentOffset covers iOS; this covers Android).
@@ -328,7 +334,7 @@ export default function TicketScreen() {
               </View>
             ) : (
               <View style={styles.pageBody}>
-                <TicketCard stub={p.stub} index={p.index} codeSize={codeSize} tear={i === at ? tear : undefined}>
+                <TicketCard stub={p.stub} index={p.index} tear={i === at ? tear : undefined} tearing={tearingAt === i} active={i === at}>
                   {p.stub.tickets[p.index] ? (
                     <Pressable
                       accessibilityRole="button"
@@ -347,7 +353,7 @@ export default function TicketScreen() {
                       }
                       style={({ pressed }) => pressed && { opacity: 0.85 }}
                     >
-                      <CodeView ticket={p.stub.tickets[p.index]} size={codeSize} />
+                      <CodeView ticket={p.stub.tickets[p.index]} size={fitCode(p.stub.tickets[p.index], 204)} />
                     </Pressable>
                   ) : null}
                 </TicketCard>
@@ -361,153 +367,40 @@ export default function TicketScreen() {
   );
 }
 
-/** Long names step down in size instead of being cut off. */
-function titleSize(title: string) {
-  const n = title.length;
-  if (n <= 18) return { fontSize: 38 };
-  if (n <= 32) return { fontSize: 32 };
-  if (n <= 48) return { fontSize: 27 };
-  return { fontSize: 23 };
-}
-
 function TicketCard({
   stub,
   index,
   children,
   tear,
+  tearing,
+  active,
 }: {
   stub: Stub;
   index: number;
-  codeSize: number;
   children: React.ReactNode;
   tear?: Animated.Value;
+  tearing?: boolean;
+  active?: boolean;
 }) {
-  const holoAll = useStore((s) => s.settings.holoAll);
-  const company = stub.details?.find((d) => d.label === 'Company')?.value;
-  const kind = KINDS.find((k) => k.id === stub.kind)?.label ?? 'Ticket';
-  const count = stub.tickets.length;
-  return (
-    <Perforated
-      color={colors.paperWarm}
-      ground={ticketAccent(stub.color, colors.accent)}
-      radius={22}
-      notch={26}
-      rule="#CFCFC6"
-      tear={tear}
-      top={
-        <View style={styles.cardTop}>
-          {(stub.holo || holoAll) && <Holo intensity={0.32} />}
-          {company ? (
-            <View style={styles.markRow}>
-              <CompanyMark name={company} accent={ticketAccent(stub.color, colors.accent)} />
-              <Text style={styles.cardLabel}>
-                {kind}
-                {count > 1 ? ` · ${index + 1} of ${count}` : ''}
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.cardLabel}>
-              {kind}
-              {count > 1 ? ` · ${index + 1} of ${count}` : ''}
-            </Text>
-          )}
-          <Text style={[styles.cardTitle, titleSize(stub.title)]}>{stub.title}</Text>
-          <View style={styles.grid}>
-            <Field label="Date" value={`${relativeDay(stub.date) === 'Today' ? 'Today · ' : ''}${fmt.short(stub.date)}`} />
-            {stub.time ? <Field label="Time" value={stub.time} /> : null}
-            {[...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])]
-              .filter((d) => d.label !== 'Company')
-              .map((d, i) => (
-                <Field
-                  key={`${d.label}-${i}`}
-                  label={d.label === 'Ref' ? 'Booking ref' : d.label}
-                  value={d.value}
-                  mono={d.label === 'Ref'}
-                />
-              ))}
-          </View>
-        </View>
-      }
-      bottom={
-        <View style={styles.cardBottom}>
-          {children}
-          <View style={styles.bright}>
-            <Icon name="sun" size={14} color={colors.inkSoft} stroke={2.2} />
-            <Text style={styles.brightText}>Brightness boosted for scanning</Text>
-          </View>
-        </View>
-      }
-    />
-  );
-}
-
-function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <View style={styles.fieldBox}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <Text style={[styles.fieldValue, mono && { fontFamily: fonts.mono }]}>{value}</Text>
-    </View>
-  );
+  return <WalletTicket stub={stub} index={index} tear={tear} tearing={tearing} active={active} code={children ?? undefined} />;
 }
 
 const styles = StyleSheet.create({
-  markRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  screen: { flex: 1, backgroundColor: colors.accent },
+  screen: { flex: 1, backgroundColor: SCREEN },
   scrollBody: { flexGrow: 1, gap: 16 },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  counter: {
-    backgroundColor: colors.ink,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  counterText: {
-    fontFamily: fonts.monoBold,
-    fontSize: 13,
-    color: colors.paper,
-  },
-  cardTop: { padding: 22, paddingBottom: 18, gap: 12 },
-  cardLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: colors.inkSoft,
-  },
-  cardTitle: {
-    fontFamily: fonts.display,
-    fontSize: 38,
-    textTransform: 'uppercase',
-    color: colors.ink,
-  },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 28, rowGap: 10 },
-  fieldBox: { gap: 2 },
-  fieldLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: colors.inkFaint,
-  },
-  fieldValue: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.ink },
-  cardBottom: { padding: 20, alignItems: 'center', gap: 12 },
-  bright: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  brightText: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
+  counter: { height: 40, paddingHorizontal: 18, borderRadius: 20, backgroundColor: INK, justifyContent: 'center' },
+  counterText: { fontSize: 15, fontWeight: '600', color: '#FFFFFF', fontVariant: ['tabular-nums'] },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   below: { gap: 8, alignItems: 'center', paddingHorizontal: H_PAD },
   swipeHint: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    color: 'rgba(17,17,17,0.65)',
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#666666',
     textAlign: 'center',
   },
   dot: {
@@ -518,10 +411,10 @@ const styles = StyleSheet.create({
   },
   dotOn: { width: 22, backgroundColor: colors.ink },
   outline: {
-    height: 54,
-    borderRadius: 999,
+    height: 56,
+    borderRadius: 28,
     borderWidth: 2,
-    borderColor: colors.ink,
+    borderColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
@@ -530,21 +423,20 @@ const styles = StyleSheet.create({
   pageBody: { gap: 16 },
   grow: { flex: 1 },
   solid: {
-    height: 54,
-    borderRadius: 999,
-    backgroundColor: colors.ink,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: INK,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 26,
   },
-  solidText: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.paper },
-  outlineText: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
+  solidText: { fontSize: 17, fontWeight: '600', color: '#FFFFFF' },
+  outlineText: { fontSize: 17, fontWeight: '600', color: INK },
   missing: { paddingHorizontal: H_PAD, gap: 12 },
   missingTitle: {
-    fontFamily: fonts.display,
-    fontSize: 44,
-    textTransform: 'uppercase',
+    ...font.display,
+    fontSize: 33,
     color: colors.ink,
   },
-  missingBody: { fontFamily: fonts.body, fontSize: 16, color: colors.ink },
+  missingBody: { ...font.body, fontSize: 16, color: colors.ink },
 });

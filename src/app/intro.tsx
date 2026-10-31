@@ -11,7 +11,7 @@ import { askPersistentBanners } from '../lib/persistent';
 import { reminderStatus } from '../lib/reminders';
 import { ensureReminders, setSettings } from '../lib/store';
 import type { Ticket } from '../lib/types';
-import { colors, fonts, label } from '../theme';
+import { colors, font, label } from '../theme';
 
 const SAMPLE: Ticket = { id: 'intro', pageUri: '', code: { symbology: 'qr', payload: 'STASH-INTRO-0001', cropUri: '' } };
 
@@ -81,7 +81,7 @@ export function MailArt() {
             <View key={c} style={[art.appDot, { backgroundColor: c }]} />
           ))}
           <View style={[art.appDot, art.appStash]}>
-            <Icon name="ticket" size={16} color={colors.ink} stroke={2.4} />
+            <Icon name="ticket" size={16} color={colors.onAccent} stroke={2.4} />
           </View>
         </View>
       </Step>
@@ -110,7 +110,7 @@ function ShareArt() {
       ))}
       <Icon name="chevronDown" size={26} color={colors.inkSoft} stroke={2.4} />
       <View style={art.stashPill}>
-        <Icon name="ticket" size={20} color={colors.ink} stroke={2.4} />
+        <Icon name="ticket" size={20} color={colors.onAccent} stroke={2.4} />
         <Text style={art.stashText}>Share → Stash</Text>
       </View>
     </View>
@@ -159,7 +159,7 @@ function LockArt() {
       <Text style={art.date}>Wednesday 14 October</Text>
       <View style={art.note}>
         <View style={art.noteIcon}>
-          <Icon name="ticket" size={16} color={colors.ink} stroke={2.4} />
+          <Icon name="ticket" size={16} color={colors.onAccent} stroke={2.4} />
         </View>
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={art.noteApp}>STASH · now</Text>
@@ -295,21 +295,21 @@ export default function Intro() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ground },
   bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, minHeight: 44 },
-  brand: { fontFamily: fonts.display, fontSize: 28, textTransform: 'uppercase', color: colors.ink },
-  skip: { fontFamily: fonts.bodyMedium, fontSize: 16, color: colors.inkSoft },
+  brand: { ...font.display, fontSize: 26, letterSpacing: -0.8, color: colors.ink },
+  skip: { ...font.bodyMedium, fontSize: 16, color: colors.inkSoft },
   slide: { flexGrow: 1, paddingHorizontal: 24 },
   artArea: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', minHeight: 240, paddingVertical: 12 },
   copy: { gap: 10, paddingBottom: 8 },
-  title: { fontFamily: fonts.display, fontSize: 40, textTransform: 'uppercase', color: colors.ink },
-  body: { fontFamily: fonts.body, fontSize: 17, lineHeight: 24, color: colors.ink },
+  title: { ...font.display, fontSize: 30, color: colors.ink },
+  body: { ...font.body, fontSize: 17, lineHeight: 24, color: colors.ink },
   footer: { paddingHorizontal: 24, gap: 14, paddingTop: 12 },
   dots: { flexDirection: 'row', gap: 8, justifyContent: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.rule },
   dotOn: { width: 24, backgroundColor: colors.ink },
   primary: { height: 56, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.ink },
+  primaryText: { ...font.bodyBold, fontSize: 17, color: colors.onAccent },
   ghost: { minHeight: 36, alignItems: 'center', justifyContent: 'center' },
-  ghostText: { fontFamily: fonts.bodyMedium, fontSize: 15, color: colors.inkSoft },
+  ghostText: { ...font.bodyMedium, fontSize: 15, color: colors.inkSoft },
 });
 
 const art = StyleSheet.create({
@@ -317,14 +317,14 @@ const art = StyleSheet.create({
   behind: { position: 'absolute', width: 210, height: 250, borderRadius: 18 },
   ticket: { width: 230 },
   top: { padding: 18, gap: 6 },
-  title: { fontFamily: fonts.display, fontSize: 30, textTransform: 'uppercase', color: colors.ink },
+  title: { ...font.display, fontSize: 22, color: colors.ink },
   codeWrap: { alignItems: 'center', paddingVertical: 18 },
 
   mail: { width: '100%', maxWidth: 330, gap: 10 },
   step: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: colors.paper, borderRadius: 14, padding: 12 },
-  stepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
-  stepNumText: { fontFamily: fonts.monoBold, fontSize: 13, color: colors.accent },
-  stepText: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.ink, marginBottom: 8, marginTop: 3 },
+  stepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  stepNumText: { ...font.monoBold, fontSize: 13, color: colors.onAccent },
+  stepText: { ...font.bodyBold, fontSize: 15, color: colors.ink, marginBottom: 8, marginTop: 3 },
   attach: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -336,12 +336,12 @@ const art = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
-  attachText: { fontFamily: fonts.mono, fontSize: 13, color: colors.ink },
+  attachText: { ...font.mono, fontSize: 13, color: colors.ink },
   shareIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.paperWarm, alignItems: 'center', justifyContent: 'center' },
   appRow: { flexDirection: 'row', gap: 10 },
   appDot: { width: 36, height: 36, borderRadius: 10, opacity: 0.35 },
   appStash: { opacity: 1, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.ink },
-  mailTip: { fontFamily: fonts.mono, fontSize: 12, lineHeight: 17, color: colors.inkSoft, paddingHorizontal: 4 },
+  mailTip: { ...font.mono, fontSize: 12, lineHeight: 17, color: colors.inkSoft, paddingHorizontal: 4 },
 
   share: { width: '100%', maxWidth: 320, alignItems: 'center', gap: 10 },
   shareRow: {
@@ -355,8 +355,8 @@ const art = StyleSheet.create({
     paddingVertical: 12,
   },
   shareIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.paperWarm, alignItems: 'center', justifyContent: 'center' },
-  shareText: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
-  shareFrom: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
+  shareText: { ...font.bodyBold, fontSize: 16, color: colors.ink },
+  shareFrom: { ...font.mono, fontSize: 12, color: colors.inkSoft },
   stashPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -366,13 +366,13 @@ const art = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 14,
   },
-  stashText: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.ink },
+  stashText: { ...font.bodyBold, fontSize: 17, color: colors.onAccent },
 
   readCard: { width: '100%', maxWidth: 320 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 18, paddingVertical: 14, rowGap: 14 },
   field: { width: '33.33%', gap: 2 },
-  fieldLabel: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkSoft },
-  fieldValue: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.ink },
+  fieldLabel: { ...font.mono, fontSize: 11, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkSoft },
+  fieldValue: { ...font.bodyBold, fontSize: 18, color: colors.ink },
   mark: { height: 3, width: 28, borderRadius: 2, backgroundColor: colors.accent, marginTop: 2 },
 
   phone: {
@@ -385,8 +385,8 @@ const art = StyleSheet.create({
     paddingHorizontal: 12,
     gap: 2,
   },
-  clock: { fontFamily: fonts.display, fontSize: 64, color: colors.nightText },
-  date: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.nightSoft, marginBottom: 22 },
+  clock: { ...font.display, fontSize: 47, color: colors.nightText },
+  date: { ...font.bodyMedium, fontSize: 14, color: colors.nightSoft, marginBottom: 22 },
   note: {
     width: '100%',
     flexDirection: 'row',
@@ -397,7 +397,7 @@ const art = StyleSheet.create({
     padding: 12,
   },
   noteIcon: { width: 32, height: 32, borderRadius: 9, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  noteApp: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 1, color: colors.nightSoft },
-  noteTitle: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.nightText },
-  noteBody: { fontFamily: fonts.body, fontSize: 13, color: colors.nightText },
+  noteApp: { ...font.mono, fontSize: 10, letterSpacing: 1, color: colors.nightSoft },
+  noteTitle: { ...font.bodyBold, fontSize: 14, color: colors.nightText },
+  noteBody: { ...font.body, fontSize: 13, color: colors.nightText },
 });

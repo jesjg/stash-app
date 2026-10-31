@@ -23,7 +23,6 @@
     "expo-media-library": "~57.0.5",
     "expo-notifications": "~57.0.22",
     "expo-router": "~57.0.25",
-    "expo-sensors": "~57.0.3",
     "expo-sharing": "~57.0.22",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
@@ -59,8 +58,7 @@
     "build:dev": "eas build --profile development --platform ios",
     "build:preview": "eas build --profile preview --platform ios",
     "postinstall": "patch-package",
-    "test:reader": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolve.mjs scripts/reader-tests.ts",
-    "test:trips": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolve.mjs scripts/trip-tests.ts"
+    "test:reader": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolve.mjs scripts/reader-tests.ts"
   },
   "private": true
 }

@@ -15,6 +15,11 @@ const cases: [string, string, Want][] = [
     { title: 'Ubud: Quad ATV Waterfalls & Barong Caves', kind: 'activity', date: '2026-12-01', time: '12:30', company: 'GetYourGuide' },
   ],
   [
+    'GetYourGuide screenshot opened from Gmail (status bar reads "4 Gmail")',
+    ['4:13', '4 ◀ Gmail', 'Your ticket', 'Available offline', 'Tue, Dec 1, 2026\t12:30 pm', 'Ubud: Quad ATV Waterfalls & Barong Caves', 'Tandem Quad Waterfalls & Barong Caves (1', 'voucher for 2 people)', 'Group', '1 Group up to 2', 'GYGFWVZF739H'].join('\n'),
+    { title: 'Ubud: Quad ATV Waterfalls & Barong Caves', company: 'GetYourGuide' },
+  ],
+  [
     'Ferry with a written route',
     ['Ionian Lines', 'Nidri → Kefalonia', 'Departure 14 Nov 2026 09:00', 'Deck passenger'].join('\n'),
     { title: 'Nidri → Kefalonia', kind: 'ferry', date: '2026-11-14', time: '09:00' },
@@ -40,6 +45,161 @@ for (const [name, text, want] of cases) {
     }
   }
 }
+// Ekajaya Fast Ferry (screenshot of a two-passenger PDF, "ADULT TICKET" watermark all over it).
+// The phone read the watermark between "Date :" and the date, so check both layouts.
+const ekajaya = (name: string, split: boolean) =>
+  [
+    'TICKET', 'No. Booking', 'ADULT', 'EKJ26107640', 'TICKET', 'EKAJAYA FAST FERRY', 'TOnCT', 'Agent', 'Ticket No. EKJ26107640-1-1',
+    'BEJ - ekajayafastferry.com (Repeate...', 'DEPARTURE TICKET', `Name : ${name}`, '(One way)', '(Adult)',
+    split ? 'Date :\nADULT\n26 Nov 2026' : 'Date : 26 Nov 2026', 'Pickup : -', 'Trip : Trip 2 11.05 (Per 1 Nov) - 11:05', 'Area :',
+    'Check-in Time: 10.05 - 10.35 ( Check in Location )', 'Location :', 'Route : Bangsal - Padang Bai', 'ADULT', 'TICKET',
+    'Please note that the trip below include stops at Padangbai, Penida, or Lembongan and may take up to 4 hours.',
+  ].join('\n');
+for (const split of [false, true]) {
+  const got = extractDetails(
+    [{ text: ekajaya('Jes Jones Gardner, Mr.', split), codes: 1 }, { text: ekajaya('Gabija Dubickaite, Ms.', split), codes: 1 }],
+    2,
+    today,
+  );
+  const want = { title: 'Bangsal → Padang Bai', kind: 'ferry', date: '2026-11-26', time: '11:05' };
+  const value = (label: string, list = got.shared) => list.find((d) => d.label === label)?.value;
+  const check: [string, unknown, unknown][] = [
+    ...Object.entries(want).map(([k, w]) => [k, got[k as keyof typeof want], w] as [string, unknown, unknown]),
+    ['company', value('Company'), 'Ekajaya Fast Ferry'],
+    ['ref', value('Ref'), 'EKJ26107640'],
+    ['passenger 1', value('Passenger', got.perTicket[0]), 'Jes Jones Gardner'],
+    ['passenger 2', value('Passenger', got.perTicket[1]), 'Gabija Dubickaite'],
+    ['no stray details', [...got.shared, ...got.perTicket.flat()].map((d) => d.label).filter((l) => !['Company', 'Ref', 'Passenger'].includes(l)).join(','), ''],
+  ];
+  for (const [field, g, w] of check) {
+    if (g !== w) {
+      bad++;
+      console.log(`✗ Ekajaya ferry${split ? ' (date split by watermark)' : ''}: ${field} was ${JSON.stringify(g)}, wanted ${JSON.stringify(w)}`);
+    }
+  }
+}
+
+// Bali tourist levy voucher (screenshot from the browser, opened from Gmail): two-column layout,
+// a purchase "Date stamp" with a time that isn't the visit's.
+{
+  const levy = [
+    '5:56', '◀ Gmail\t61', 'i.baliprov.go.id', 'Bali Provincial Government', 'lovebali.baliprov.go.id',
+    "Protect Bali's Paradise: Your Contribution Matters", 'Levy Voucher No.\tPassport Number', 'LVB26IUKFEA\t26****334',
+    'Name (Same as Passport)\tEmail', 'GABIJA DUBICKAITE\tje****99@gm****om', 'IDR IDR 150,000', '*Non-Refundable',
+    'Service fees IDR IDR 4,500', 'For Only Debit / Credit Card', 'Arrival date plan 09 November 2026',
+    'Date stamp 19 Sep 2026 06:53 (GMT+8)', 'Please bring this levy voucher with you during your stay in Bali.',
+  ].join('\n');
+  const got = extractDetails([{ text: levy, codes: 1 }], 1, today);
+  const value = (label: string, list = got.shared) => list.find((d) => d.label === label)?.value;
+  const check: [string, unknown, unknown][] = [
+    ['title', got.title, 'Bali Tourist Levy'],
+    ['kind', got.kind, 'visa'],
+    ['date', got.date, '2026-11-09'],
+    ['time', got.time ?? null, null],
+    ['ref', value('Ref'), 'LVB26IUKFEA'],
+    ['passenger', value('Passenger', got.perTicket[0]), 'Gabija Dubickaite'],
+  ];
+  for (const [field, g, w] of check) {
+    if (g !== w) {
+      bad++;
+      console.log(`✗ Bali levy voucher: ${field} was ${JSON.stringify(g)}, wanted ${JSON.stringify(w)}`);
+    }
+  }
+}
+
+// KM Malta Airlines paper boarding pass (photo): time printed "24JUN 1555", airline only as a logo.
+{
+  const text = ['Malta International Airport', 'KM MALTA\tBoarding Pass', 'JONES GARDNEJES DANI', 'MALTA\tKM 3118 R 24JUN 1555', 'LONDON GATWICK\tTo LONDON GATWICK',
+    'Flight\tClass Date\tTime', 'KM 3118 R 24JUN 1555', 'Gate\tBoarding Time\tSeat', '14C/ 090\t1525 14C\tXXX', 'ECONOMY VALUE', 'kmmaltairlines.com\t5BU\tGFELCE'].join('\n');
+  const pass = 'M1' + 'JONES GARDNEJES/DANI' + 'E' + 'GFELCE ' + 'MLALGW' + 'KM ' + '3118 ' + '175' + 'R' + '014C' + '0090 ' + '100';
+  const got = extractDetails([{ text, codes: 1, payloads: [pass] }], 1, today);
+  const value = (label: string, list = got.shared) => list.find((d) => d.label === label)?.value;
+  const check: [string, unknown, unknown][] = [
+    ['title', got.title, 'MLA → LGW'],
+    ['time', got.time, '15:55'],
+    ['company', value('Company'), 'KM Malta Airlines'],
+    ['seat', value('Seat', got.perTicket[0]), '14C'],
+  ];
+  for (const [field, g, w] of check) {
+    if (g !== w) {
+      bad++;
+      console.log(`✗ KM Malta boarding pass: ${field} was ${JSON.stringify(g)}, wanted ${JSON.stringify(w)}`);
+    }
+  }
+}
+
+// A second Ekajaya ticket: a place with a note in brackets, the time only on the "Trip" line, and the
+// watermark read in between the fields (where "Area :" is left blank).
+{
+  const page = (name: string) =>
+    ['TICKET', 'No. Booking', 'ADULT', 'EKJ26106988', 'EKAJAYA FAST FERRY', 'ASTAtAy', 'Agent', 'Ticket No. EKJ26106988-1-1',
+      'BEJ - ekajayafastferry.com (Repeate...', 'DEPARTURE TICKET', `Name : ${name}`, '(One way)', '(Adult)', 'Date : 19 Nov 2026', 'ADULT',
+      'Pickup : -', 'TICKET', 'Area :', 'ADULT', 'Trip : Trip 1 09.00 (Per 27 June) - 09:00', 'Location :', 'TICKET',
+      'Check-in Time: 08.00 - 08.30 ( Check in Location )', 'ADULT', 'Route : Lembongan (Yellow Bridge) - Gili Trawangan', 'TICKET'].join('\n');
+  const got = extractDetails([{ text: page('Jes Jones Gardner, Mr.'), codes: 1 }, { text: page('Gabija Dubickaite, Mrs.'), codes: 1 }], 2, today);
+  const labels = [...got.shared, ...got.perTicket.flat()].map((d) => d.label).sort().join(',');
+  const check: [string, unknown, unknown][] = [
+    ['title', got.title, 'Lembongan → Gili Trawangan'],
+    ['date', got.date, '2026-11-19'],
+    ['time', got.time, '09:00'],
+    ['details', labels, 'Company,Passenger,Passenger,Ref'],
+  ];
+  for (const [field, g, w] of check) {
+    if (g !== w) {
+      bad++;
+      console.log(`✗ Ekajaya ferry 2: ${field} was ${JSON.stringify(g)}, wanted ${JSON.stringify(w)}`);
+    }
+  }
+}
+
+// The same ticket with the phone joining things on one line: watermark words next to the company and
+// the route, the trip time next to "Area :", "(One way)" next to the name.
+{
+  const page = (name: string) =>
+    ['TICKET', 'No. Booking\tADULT', 'EKJ26106988\tTICKET', 'ADULT\tEKAJAYA FAST FERRY', 'Agent\tTicket No. EKJ26106988-1-1',
+      'BEJ - ekajayafastferry.com (Repeate...\tDEPARTURE TICKET', `Name : ${name}\t(One way)`, '(Adult)\tTICKET', 'Date : 19 Nov 2026\tADULT\tPickup : -',
+      'Check-in Time: 08.00 - 08.30\tTrip : Trip 1 09.00 (Per 27 June) - 09:00', 'Location :', 'Route : Lembongan (Yellow Bridge) - Gili Trawangan\tTICKET'].join('\n');
+  const got = extractDetails([{ text: page('Jes Jones Gardner, Mr.'), codes: 1 }, { text: page('Gabija Dubickaite, Mrs.'), codes: 1 }], 2, today);
+  const value = (label: string, list = got.shared) => list.find((d) => d.label === label)?.value;
+  const check: [string, unknown, unknown][] = [
+    ['title', got.title, 'Lembongan → Gili Trawangan'],
+    ['time', got.time, '09:00'],
+    ['company', value('Company'), 'Ekajaya Fast Ferry'],
+    ['passenger', value('Passenger', got.perTicket[0]), 'Jes Jones Gardner'],
+  ];
+  for (const [field, g, w] of check) {
+    if (g !== w) {
+      bad++;
+      console.log(`✗ Ekajaya ferry 2 (lines joined): ${field} was ${JSON.stringify(g)}, wanted ${JSON.stringify(w)}`);
+    }
+  }
+}
+
+// Words in sentences that aren't details: "entry remains…", "class includes…".
+const noDetails: [string, string, string][] = [
+  ['Indonesia e-VOA disclaimer', 'Issuance of e-VOA does not guarantee entry to the Republic of Indonesia, the decision of entry remains the right of the Immigration Officer', 'Entrance'],
+  ['GetYourGuide class description', 'Ubud: 2-Hour Make Your Own Silver class Includes all materials and a drink', 'Deck'],
+];
+for (const [name, text, label] of noDetails) {
+  const got = extractDetails([{ text, codes: 1 }], 1, today);
+  const found = [...got.shared, ...got.perTicket.flat()].find((d) => d.label === label);
+  if (found) {
+    bad++;
+    console.log(`✗ ${name}: read ${label} "${found.value}" from a sentence`);
+  }
+}
+const kept: [string, string, string, string][] = [
+  ['Labelled entrance', 'Entrance: North', 'Entrance', 'North'],
+  ['Stadium entry code', 'Please use Entry D4 for this match', 'Entrance', 'D4'],
+];
+for (const [name, text, label, value] of kept) {
+  const got = extractDetails([{ text, codes: 1 }], 1, today);
+  const found = [...got.shared, ...got.perTicket.flat()].find((d) => d.label === label);
+  if (found?.value !== value) {
+    bad++;
+    console.log(`✗ ${name}: ${label} was ${JSON.stringify(found?.value)}, wanted ${value}`);
+  }
+}
 const kinds: [string, string][] = [
   ['train', 'GWR\nOff-Peak Return\nCardiff Central to London Paddington\nRoute: Any Permitted\nCoach C Seat 42\nAdult ticket'],
   ['flight', 'Ryanair\nBoarding pass\nGate closes 06:20\nSeat 14C'],
@@ -54,5 +214,5 @@ for (const [want, text] of kinds) {
     console.log(`✗ kind: ${JSON.stringify(text.split('\n')[0])} was ${got}, wanted ${want}`);
   }
 }
-console.log(bad ? `${bad} wrong` : `All ${cases.length + kinds.length} tickets read right`);
+console.log(bad ? `${bad} wrong` : `All ${cases.length + 6 + noDetails.length + kept.length + kinds.length} tickets read right`);
 process.exit(bad ? 1 : 0);

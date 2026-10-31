@@ -6,21 +6,20 @@
 <title>Your ticket · Stash</title>
 <meta name="description" content="Add this ticket to Stash: on your lock screen on the day, with a reminder.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
-  :root { --ground:#EDEDE9; --paper:#F7F7F3; --ink:#111; --soft:#55554F; --faint:#8A8A82; --rule:#CFCFC8; --accent:#FF5A1F; }
+  :root { --ground:#FFFFFF; --paper:#FFFFFF; --ink:#111; --soft:#666; --faint:#8A8A82; --rule:#CFCFC8; --accent:#9747FF; }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--accent); color:var(--ink); font-family:'Space Grotesk', system-ui, sans-serif; min-height:100vh; }
+  body { margin:0; background:var(--accent); color:var(--ink); font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; min-height:100vh; }
   main { max-width:440px; margin:0 auto; padding:20px 16px 40px; }
   .brand { display:flex; align-items:center; gap:8px; margin:4px 4px 16px; }
-  .brand b { font-family:Anton, Impact, sans-serif; font-size:26px; letter-spacing:.5px; text-transform:uppercase; font-weight:400; }
+  .brand b { font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; font-weight:800; font-size:26px; letter-spacing:-0.8px; color:#fff; }
   .ticket { background:var(--paper); border-radius:22px; position:relative; }
   .top { padding:22px 22px 18px; }
-  .kicker { font:12px 'Space Mono', monospace; letter-spacing:1.6px; text-transform:uppercase; color:var(--soft); }
-  h1 { font-family:Anton, Impact, sans-serif; font-weight:400; font-size:40px; line-height:1.05; text-transform:uppercase; margin:8px 0 14px; overflow-wrap:anywhere; }
+  .kicker { font:12px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; letter-spacing:1.6px; text-transform:uppercase; color:var(--soft); }
+  h1 { font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; font-weight:800; letter-spacing:-0.8px; font-size:40px; line-height:1.05; text-transform:uppercase; margin:8px 0 14px; overflow-wrap:anywhere; }
   .grid { display:flex; flex-wrap:wrap; gap:10px 28px; }
-  .f span { display:block; font:10px 'Space Mono', monospace; letter-spacing:1.2px; text-transform:uppercase; color:var(--faint); }
+  .f span { display:block; font:10px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; letter-spacing:1.2px; text-transform:uppercase; color:var(--faint); }
   .f b { font-size:15px; }
   .info { margin-top:14px; padding:12px 14px; background:#fff; border-radius:12px; font-size:15px; line-height:1.4; }
   .tear { position:relative; height:0; border-top:2px dashed var(--rule); margin:0 18px; }
@@ -29,19 +28,19 @@
   .codes { padding:20px; display:grid; gap:18px; justify-items:center; }
   .code { text-align:center; }
   .code canvas, .code img { width:220px; height:220px; image-rendering:pixelated; background:#fff; padding:10px; border-radius:10px; }
-  .code small { display:block; margin-top:6px; font:12px 'Space Mono', monospace; color:var(--soft); }
+  .code small { display:block; margin-top:6px; font:12px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; color:var(--soft); }
   .actions { display:grid; gap:10px; margin-top:16px; }
   .btn { display:flex; align-items:center; justify-content:center; height:56px; border-radius:999px; font-weight:700; font-size:17px; text-decoration:none; }
   .primary { background:var(--ink); color:#fff; }
-  .secondary { background:transparent; color:var(--ink); border:2px solid var(--ink); }
-  .note { font:12px/1.5 'Space Mono', monospace; color:#2a1208; text-align:center; margin:14px 8px 0; }
+  .secondary { background:transparent; color:#fff; border:2px solid #fff; }
+  .note { font:12px/1.5 -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; color:#fff; text-align:center; margin:14px 8px 0; }
   .bad { background:var(--paper); border-radius:22px; padding:28px; text-align:center; }
 </style>
 </head>
 <body>
 <main>
   <div class="brand">
-    <svg width="34" height="34" viewBox="0 0 100 100" aria-hidden="true"><g transform="translate(44 47) rotate(-10)"><rect x="-27" y="-36" width="54" height="72" rx="8" fill="#111"/></g><g transform="translate(54 51) rotate(6)"><rect x="-28" y="-37" width="56" height="74" rx="8" fill="#F7F7F3"/><text x="0" y="15" font-family="Anton, Impact, sans-serif" font-size="46" fill="#111" text-anchor="middle">S</text></g></svg>
+    <img src="../icon.png" alt="" width="34" height="34" style="border-radius:8px;display:block">
     <b>Stash</b>
   </div>
   <div id="app"></div>
@@ -78,7 +77,7 @@
     var fields = '<div class="f"><span>Date</span><b>' + esc(niceDate(t.d)) + '</b></div>' +
       (t.tm ? '<div class="f"><span>Time</span><b>' + esc(t.tm) + '</b></div>' : '') +
       (t.sh || []).map(function (p) { return '<div class="f"><span>' + esc(p[0]) + '</span><b>' + esc(p[1]) + '</b></div>'; }).join('') +
-      (t.ref ? '<div class="f"><span>Booking ref</span><b style="font-family:Space Mono,monospace">' + esc(t.ref) + '</b></div>' : '');
+      (t.ref ? '<div class="f"><span>Booking ref</span><b style="font-family:-apple-system, BlinkMacSystemFont, SF Pro Display, SF Pro Text, Helvetica Neue, Arial, sans-serif">' + esc(t.ref) + '</b></div>' : '');
     var codes = t.x.map(function (x, i) {
       var who = (x.s || []).map(function (p) { return esc(p[0]) + ' ' + esc(p[1]); }).join(' · ');
       return '<div class="code" id="c' + i + '"></div><div class="code"><small>' + (t.x.length > 1 ? 'Ticket ' + (i + 1) + (who ? ' · ' : '') : '') + who + '</small></div>';
@@ -100,7 +99,7 @@
         if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
         var qr = qrcode(0, 'M'); qr.addData(x.q); qr.make();
         document.getElementById('c' + i).innerHTML = qr.createImgTag(6, 0);
-      } catch (e) { document.getElementById('c' + i).innerHTML = '<div style="font:16px Space Mono,monospace;padding:16px;background:#fff;border-radius:10px">' + esc(x.q) + '</div>'; }
+      } catch (e) { document.getElementById('c' + i).innerHTML = '<div style="font:16px -apple-system, BlinkMacSystemFont, SF Pro Display, SF Pro Text, Helvetica Neue, Arial, sans-serif;padding:16px;background:#fff;border-radius:10px">' + esc(x.q) + '</div>'; }
     });
   }
 </script>

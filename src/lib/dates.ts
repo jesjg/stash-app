@@ -29,6 +29,7 @@ export function daysBetween(a: string, b: string): number {
 
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const DOW_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MON_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export const fmt = {
@@ -42,6 +43,11 @@ export const fmt = {
   short: (day: string) => {
     const d = toDate(day);
     return `${DOW_LONG[d.getDay()].slice(0, 3)} ${d.getDate()} ${MON[d.getMonth()]}`;
+  },
+  /** "Thursday 29 October" */
+  full: (day: string) => {
+    const d = toDate(day);
+    return `${DOW_LONG[d.getDay()]} ${d.getDate()} ${MON_LONG[d.getMonth()]}`;
   },
   /** "Wednesday 7 October 2026" style without the year when it's this year. */
   long: (day: string) => {

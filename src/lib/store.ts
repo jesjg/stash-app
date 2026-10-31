@@ -1,9 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import { addDays, dayKey, daysBetween, toDate } from './dates';
 import { File } from 'expo-file-system';
-import { dbFile, deleteStubFiles, newId, rebase, rootDir, stubDir } from './files';
+import { dbFile, deleteStubFiles, newId, rebase, stubDir } from './files';
 import type { Extracted } from './extract';
-import type { Trip } from './trips';
 import type { StayFound } from './stay';
 import { cancelReminder, ensurePermission, reminderStatus, scheduleReminder } from './reminders';
 import { DEFAULT_SETTINGS, type Settings, type Stub } from './types';
@@ -20,8 +19,6 @@ type State = {
   lockCard: { activityId: string; stubId: string } | null;
   /** A light record of every ticket ever saved (no files), kept after auto-clear for Year in tickets. */
   history: HistoryItem[];
-  /** Names people gave their trips, by trip id. */
-  tripNames: Record<string, string>;
 };
 
 export type HistoryItem = { id: string; title: string; kind: Stub['kind']; date: string; nights?: number; place?: string };
@@ -47,7 +44,7 @@ function toHistory(s: Stub): HistoryItem {
   return { id: s.id, title: s.title, kind: s.kind, date: s.date, nights, place: placeOf(s) };
 }
 
-let state: State = { loaded: false, stubs: [], settings: DEFAULT_SETTINGS, draft: null, seenShots: [], lockCard: null, history: [], tripNames: {} };
+let state: State = { loaded: false, stubs: [], settings: DEFAULT_SETTINGS, draft: null, seenShots: [], lockCard: null, history: [] };
 const listeners = new Set<() => void>();
 
 function set(patch: Partial<State>) {
@@ -77,7 +74,7 @@ export const getState = () => state;
 function persist() {
   try {
     dbFile().write(
-      JSON.stringify({ v: 1, stubs: state.stubs, settings: state.settings, seenShots: state.seenShots, lockCard: state.lockCard, history: state.history, tripNames: state.tripNames }),
+      JSON.stringify({ v: 1, stubs: state.stubs, settings: state.settings, seenShots: state.seenShots, lockCard: state.lockCard, history: state.history }),
     );
   } catch (e) {
     console.warn('Could not save stubs', e);
@@ -91,30 +88,43 @@ export async function load() {
   let seenShots: string[] = [];
   let lockCard: State['lockCard'] = null;
   let history: HistoryItem[] = [];
-  let tripNames: Record<string, string> = {};
   try {
     const file = dbFile();
     if (file.exists) {
       const data = JSON.parse(await file.text());
       stubs = Array.isArray(data.stubs) ? data.stubs : [];
-      settings = { ...DEFAULT_SETTINGS, ...(data.settings ?? {}) };
-      settings.themePhoto = rebase(settings.themePhoto);
+      // The app colour and background photo settings were removed: drop them (and the photo).
+      const { themePhoto, accent: _accent, ...saved } = data.settings ?? {};
+      settings = { ...DEFAULT_SETTINGS, ...saved };
+      deleteThemePhoto(themePhoto);
       seenShots = Array.isArray(data.seenShots) ? data.seenShots : [];
       lockCard = data.lockCard ?? null;
       history = Array.isArray(data.history) ? data.history : [];
-      tripNames = data.tripNames && typeof data.tripNames === 'object' ? data.tripNames : {};
     }
   } catch (e) {
     console.warn('Could not read stubs', e);
   }
-  const fixed = stubs.map(rebaseStub).map(dropDuplicateBarcodes).map(dropAutoCover);
+  const fixed = stubs.map(dropTrip).map(rebaseStub).map(dropDuplicateBarcodes).map(dropAutoCover);
   const moved = JSON.stringify(fixed) !== JSON.stringify(stubs);
-  set({ loaded: true, history, stubs: sortStubs(fixed), settings, seenShots, lockCard, tripNames });
+  set({ loaded: true, history, stubs: sortStubs(fixed), settings, seenShots, lockCard });
   if (moved) persist();
-  cleanUp();
 }
 
-/** Point a stub's saved files at the app's current folder (see rebase). */
+/** Delete the old background photo for all tickets, if one was saved. */
+function deleteThemePhoto(uri: string | undefined) {
+  if (!uri) return;
+  try {
+    const f = new File(rebase(uri) ?? uri);
+    if (f.exists) f.delete();
+  } catch {}
+}
+
+/** Trips were removed: forget which trip a ticket was put in. */
+function dropTrip(s: Stub): Stub {
+  const { tripId: _trip, noTrip: _no, ...rest } = s as Stub & { tripId?: string; noTrip?: boolean };
+  return rest;
+}
+
 /** Automatic (Wikipedia) covers were removed: delete those, keep photos people chose. */
 function dropAutoCover(s: Stub): Stub {
   if (!s.coverCredit) return s;
@@ -136,6 +146,7 @@ function dropDuplicateBarcodes(s: Stub): Stub {
   return tickets.length === s.tickets.length || !tickets.length ? s : { ...s, tickets };
 }
 
+/** Point a stub's saved files at the app's current folder (see rebase). */
 function rebaseStub(s: Stub): Stub {
   return {
     ...s,
@@ -269,7 +280,7 @@ export async function applyReread(id: string, found: Extracted & { stayFound?: S
   return found.shared.length + found.perTicket.reduce((n, d) => n + d.length, 0) + stayCount;
 }
 
-/** Mark as used (moves to Archive) or bring it back. Returns an undo. */
+/** Archive it (swipe left, or Used) or bring it back. Returns an undo. */
 export async function setUsed(id: string, used: boolean): Promise<() => void> {
   const current = state.stubs.find((s) => s.id === id);
   if (!current) return () => {};
@@ -288,22 +299,9 @@ export async function setUsed(id: string, used: boolean): Promise<() => void> {
   };
 }
 
-/** Delete stubs older than the "keep past tickets" setting. */
-export function cleanUp() {
-  const days = state.settings.keepPastDays;
-  if (!days) return;
-  const cutoff = addDays(dayKey(), -days);
-  const expired = state.stubs.filter((s) => lastDay(s) < cutoff);
-  if (!expired.length) return;
-  expired.forEach((s) => deleteStubFiles(s.id));
-  set({ stubs: state.stubs.filter((s) => lastDay(s) >= cutoff) });
-  persist();
-}
-
 export function setSettings(patch: Partial<Settings>) {
   set({ settings: { ...state.settings, ...patch } });
   persist();
-  cleanUp();
 }
 
 /**
@@ -346,18 +344,22 @@ export function markShotsSeen(ids: string[]) {
 
 // ---------- selectors ----------
 
-/** How long after its start time a ticket stays "live" before moving to Archive. */
-export const ARCHIVE_AFTER_MS = 3 * 60 * 60 * 1000;
+/** How long after its start time a ticket stays "live" before it counts as past. */
+export const PAST_AFTER_MS = 3 * 60 * 60 * 1000;
 
-/** Used, or its day is over, or it started more than a few hours ago. */
 /** The last day a stub is needed: check-out for stays, otherwise its date. */
 export function lastDay(s: Stub): string {
   const out = s.kind === 'stay' ? s.stay?.checkOutDate : undefined;
   return out && out > s.date ? out : s.date;
 }
 
-export function isArchived(s: Stub, now = Date.now(), today = dayKey()): boolean {
-  if (s.usedAt) return true;
+/** Only the person archives a ticket (swipe left, or Used); past ones stay on the home screen. */
+export function isArchived(s: Stub): boolean {
+  return !!s.usedAt;
+}
+
+/** Its day is over, or it started more than a few hours ago. */
+export function isPast(s: Stub, now = Date.now(), today = dayKey()): boolean {
   if (s.kind === 'stay') {
     // Stays stay put (Wi-Fi, door code) until check-out, not 3 hours after check-in.
     const end = lastDay(s);
@@ -366,19 +368,24 @@ export function isArchived(s: Stub, now = Date.now(), today = dayKey()): boolean
     return false;
   }
   if (s.date < today) return true;
-  if (s.date === today && s.time) return toDate(s.date, s.time).getTime() + ARCHIVE_AFTER_MS < now;
+  if (s.date === today && s.time) return toDate(s.date, s.time).getTime() + PAST_AFTER_MS < now;
   return false;
 }
 
 export function groupStubs(stubs: Stub[], today = dayKey(), now = Date.now()) {
-  const live = stubs.filter((s) => !isArchived(s, now, today));
+  const kept = stubs.filter((s) => !isArchived(s));
+  const live = kept.filter((s) => !isPast(s, now, today));
   return {
     // Includes stays that started earlier and run to a later check-out.
     today: live.filter((s) => s.date <= today),
     upcoming: live.filter((s) => s.date > today),
-    /** Most recent first. */
+    /** Over but not archived yet: stays on the home screen. Most recent first. */
+    past: kept
+      .filter((s) => isPast(s, now, today))
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.time ?? '').localeCompare(a.time ?? '')),
+    /** Archived by the person. Most recently archived first. */
     archive: stubs
-      .filter((s) => isArchived(s, now, today))
+      .filter(isArchived)
       .sort((a, b) => (b.usedAt ?? 0) - (a.usedAt ?? 0) || b.date.localeCompare(a.date)),
   };
 }
@@ -450,73 +457,3 @@ export async function setCover(id: string, photoUri: string | null) {
   persist();
 }
 
-/** Set (copying it into Stash) or clear the background photo used for every ticket card. */
-export async function setThemePhoto(photoUri: string | null) {
-  const old = state.settings.themePhoto;
-  let themePhoto: string | undefined;
-  if (photoUri) {
-    const ext = photoUri.match(/\.(jpe?g|png|heic|webp)$/i)?.[1]?.toLowerCase() ?? 'jpg';
-    rootDir().create({ intermediates: true, idempotent: true });
-    const dest = new File(rootDir(), `theme-${Date.now()}.${ext}`);
-    await new File(photoUri).copy(dest);
-    themePhoto = dest.uri;
-  }
-  if (old) {
-    try {
-      const f = new File(old);
-      if (f.exists) f.delete();
-    } catch {}
-  }
-  set({ settings: { ...state.settings, themePhoto } });
-  persist();
-}
-
-// ---------- trips ----------
-// Automatic trips have no stored record. As soon as someone changes one, its items get the trip's
-// id (tripId) so the grouping stays exactly as they left it.
-
-function patchStubs(change: (s: Stub) => Stub | undefined) {
-  set({ stubs: sortStubs(state.stubs.map((s) => change(s) ?? s)) });
-  persist();
-}
-
-const pin = (trip: Trip) => new Set(trip.items.map((s) => s.id));
-
-export function renameTrip(trip: Trip, name: string) {
-  const ids = pin(trip);
-  set({ tripNames: { ...state.tripNames, [trip.id]: name.trim() } });
-  patchStubs((s) => (ids.has(s.id) ? { ...s, tripId: trip.id, noTrip: undefined } : undefined));
-}
-
-export function addToTrip(stubId: string, trip: Trip) {
-  const ids = pin(trip);
-  ids.add(stubId);
-  patchStubs((s) => (ids.has(s.id) ? { ...s, tripId: trip.id, noTrip: undefined } : undefined));
-}
-
-export function removeFromTrip(stubId: string, trip: Trip) {
-  const ids = pin(trip);
-  patchStubs((s) =>
-    s.id === stubId ? { ...s, tripId: undefined, noTrip: true } : ids.has(s.id) ? { ...s, tripId: trip.id, noTrip: undefined } : undefined,
-  );
-}
-
-export function newTrip(stubId: string, name: string): string {
-  const id = `trip:${newId()}`;
-  set({ tripNames: { ...state.tripNames, [id]: name.trim() || 'Trip' } });
-  patchStubs((s) => (s.id === stubId ? { ...s, tripId: id, noTrip: undefined } : undefined));
-  return id;
-}
-
-/** Everything in `from` joins `into`, keeping `into`'s name. */
-export function mergeTrips(into: Trip, from: Trip) {
-  const ids = new Set([...pin(into), ...pin(from)]);
-  set({ tripNames: { ...state.tripNames, [into.id]: state.tripNames[into.id] ?? into.name } });
-  patchStubs((s) => (ids.has(s.id) ? { ...s, tripId: into.id, noTrip: undefined } : undefined));
-}
-
-/** Not a trip after all: its items go back to the list and aren't grouped again. */
-export function ungroupTrip(trip: Trip) {
-  const ids = pin(trip);
-  patchStubs((s) => (ids.has(s.id) ? { ...s, tripId: undefined, noTrip: true } : undefined));
-}

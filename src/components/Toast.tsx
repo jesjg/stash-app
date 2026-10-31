@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '../theme';
+import { colors, font } from '../theme';
 
 type ToastState = { id: number; message: string; actionLabel?: string; onAction?: () => void; sticky?: boolean } | null;
 
@@ -64,7 +64,7 @@ export function ToastHost() {
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', left: 16, right: 16 },
   toast: {
-    backgroundColor: colors.night,
+    backgroundColor: colors.accent,
     borderRadius: 16,
     paddingHorizontal: 18,
     paddingVertical: 14,
@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  message: { flex: 1, color: colors.nightText, fontFamily: fonts.bodyMedium, fontSize: 15 },
-  action: { color: colors.accent, fontFamily: fonts.bodyBold, fontSize: 15 },
+  message: { flex: 1, color: colors.onAccent, ...font.bodyMedium, fontSize: 15 },
+  // White on violet, in a light pill so it reads as a button.
+  action: { color: colors.onAccent, ...font.bodyBold, fontSize: 15, backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 999, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 5 },
 });

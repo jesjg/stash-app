@@ -7,7 +7,7 @@ import { captureRef } from 'react-native-view-shot';
 import { WebView } from 'react-native-webview';
 import { Icon } from '../components/Icon';
 import { importFiles } from '../lib/importer';
-import { colors, fonts } from '../theme';
+import { colors, font } from '../theme';
 
 /** Keep only web links; anything else (javascript:, file:) is refused. */
 function safeUrl(raw: string | undefined): string | null {
@@ -122,10 +122,10 @@ export default function WebImport() {
           style={({ pressed }) => [styles.capture, pressed && { opacity: 0.85 }]}
         >
           {busy ? (
-            <ActivityIndicator color={colors.ink} />
+            <ActivityIndicator color={colors.onAccent} />
           ) : (
             <>
-              <Icon name="plus" size={18} color={colors.ink} />
+              <Icon name="plus" size={18} color={colors.onAccent} />
               <Text style={styles.captureText}>Capture ticket</Text>
             </>
           )}
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center', padding: 32, gap: 14 },
   bar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 10, gap: 8 },
   barBtn: { minWidth: 64, minHeight: 44, justifyContent: 'center' },
-  cancel: { fontFamily: fonts.bodyMedium, fontSize: 16, color: colors.nightText },
+  cancel: { ...font.bodyMedium, fontSize: 16, color: colors.nightText },
   address: {
     flex: 1,
     minHeight: 36,
@@ -152,11 +152,11 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 12,
   },
-  host: { fontFamily: fonts.mono, fontSize: 13, color: colors.nightText, flexShrink: 1 },
+  host: { ...font.mono, fontSize: 13, color: colors.nightText, flexShrink: 1 },
   frame: { flex: 1, backgroundColor: colors.paper },
   web: { flex: 1 },
   footer: { paddingHorizontal: 20, paddingTop: 12, gap: 10, backgroundColor: colors.night },
-  hint: { fontFamily: fonts.mono, fontSize: 12, color: colors.nightSoft, textAlign: 'center' },
+  hint: { ...font.mono, fontSize: 12, color: colors.nightSoft, textAlign: 'center' },
   capture: {
     height: 54,
     borderRadius: 999,
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 24,
   },
-  captureText: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
-  errTitle: { fontFamily: fonts.display, fontSize: 40, textTransform: 'uppercase', color: colors.nightText },
-  errBody: { fontFamily: fonts.body, fontSize: 16, lineHeight: 23, color: colors.nightSoft, textAlign: 'center' },
+  captureText: { ...font.bodyBold, fontSize: 16, color: colors.onAccent },
+  errTitle: { ...font.display, fontSize: 30, color: colors.nightText },
+  errBody: { ...font.body, fontSize: 16, lineHeight: 23, color: colors.nightSoft, textAlign: 'center' },
 });

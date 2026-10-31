@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { importText } from '../lib/importer';
-import { colors, fonts, label } from '../theme';
+import { colors, font, label } from '../theme';
 
 /** Paste a host's message or check-in instructions; Stash reads it into a stay. */
 export default function Paste() {
@@ -65,21 +65,21 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ground },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   topBtn: { minWidth: 64, minHeight: 44, justifyContent: 'center' },
-  cancel: { fontFamily: fonts.bodyMedium, fontSize: 16, color: colors.ink },
-  heading: { fontFamily: fonts.monoBold, fontSize: 13, letterSpacing: 1.6, textTransform: 'uppercase', color: colors.ink },
+  cancel: { ...font.bodyMedium, fontSize: 16, color: colors.ink },
+  heading: { ...font.monoBold, fontSize: 13, letterSpacing: 1.6, textTransform: 'uppercase', color: colors.ink },
   content: { padding: 20, gap: 12, paddingBottom: 120 },
   input: {
     minHeight: 220,
     backgroundColor: colors.paper,
     borderRadius: 14,
     padding: 16,
-    fontFamily: fonts.body,
+    ...font.body,
     fontSize: 16,
     lineHeight: 22,
     color: colors.ink,
   },
-  tip: { fontFamily: fonts.mono, fontSize: 12, lineHeight: 18, color: colors.inkSoft },
+  tip: { ...font.mono, fontSize: 12, lineHeight: 18, color: colors.inkSoft },
   footer: { paddingHorizontal: 20, paddingTop: 12, backgroundColor: colors.ground },
   save: { height: 56, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  saveText: { fontFamily: fonts.bodyBold, fontSize: 17, color: colors.ink },
+  saveText: { ...font.bodyBold, fontSize: 17, color: colors.onAccent },
 });

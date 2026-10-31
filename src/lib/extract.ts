@@ -48,7 +48,7 @@ const LABELS: LabelDef[] = [
   { label: 'Flight', words: ['flight', 'flight no', 'flight number', 'flug', 'volo', 'vuelo', 'vol'], value: /^[A-Z0-9]{2,3}\s?\d{1,4}[A-Z]?$/i },
   {
     label: 'Ref',
-    words: ['booking reference', 'booking ref', 'booking no', 'booking number', 'booking code', 'reference', 'ref', 'order', 'order no', 'order number', 'confirmation', 'confirmation code', 'pnr', 'reservation', 'reservation no', 'ticket no', 'ticket number', 'visa number', 'visa no', 'application number', 'application no', 'permit number', 'authorisation number', 'authorization number', 'buchungsnummer', 'κωδικός κράτησης'],
+    words: ['booking reference', 'booking ref', 'booking no', 'no. booking', 'booking number', 'voucher no', 'voucher number', 'voucher code', 'levy voucher no', 'booking code', 'reference', 'ref', 'order', 'order no', 'order number', 'confirmation', 'confirmation code', 'pnr', 'reservation', 'reservation no', 'ticket no', 'ticket number', 'visa number', 'visa no', 'application number', 'application no', 'permit number', 'authorisation number', 'authorization number', 'buchungsnummer', 'κωδικός κράτησης'],
     value: REF,
   },
 ];
@@ -80,7 +80,7 @@ function labelAt(cell: string): { def: LabelDef; rest: string } | null {
 }
 
 const STOP = new Set(
-  'the and via at of in on for to from by is are be this that your you with open opens opening closes closed fee fees number information details detail time date only please see free all any none here there per'.split(' '),
+  'the and via at of in on for to from by is are be this that your you with open opens opening closes closed fee fees number information details detail time date only please see free all any none here there per includes include included including remains remain must may will can not required requirements subject valid applies apply adult adults child children infant senior ticket tickets'.split(' '),
 );
 
 // Theatre and venue areas: "Stalls", "Dress Circle", "Grand Circle", "Upper Tier", "Box C".
@@ -149,6 +149,11 @@ function cleanValue(def: LabelDef, raw: string): string | null {
   return token;
 }
 
+/** A heading for someone's name: "Name", "Full name", "Name (Same as Passport)", "Passenger name". */
+const NAME_HEAD = /^(?:full\s+)?(?:name|passenger(?:\s+name)?|guest(?:\s+name)?|holder)(?:\s*\([^)]*\))?\s*:?$/i;
+/** Two to four words of letters: a person's name, as printed. */
+const PERSON = /^[\p{L}'.-]+(?:\s+[\p{L}'.-]+){1,3}$/u;
+
 /** All label/value pairs on a page, in reading order. */
 function findDetails(text: string): Detail[] {
   const out: Detail[] = [];
@@ -180,10 +185,11 @@ function findDetails(text: string): Detail[] {
     const labels = cells.map(labelAt);
 
     // Header row of labels with a row of values below: "SECTION  ROW  SEAT" / "112  F  14"
+    const isName = (c: string) => NAME_HEAD.test(c);
     const isHeading = (c: string, l: ReturnType<typeof labelAt>) =>
-      (l && !l.rest) || /^[A-Z][A-Z /&.-]{1,20}:?$/.test(c);
-    const labelCount = labels.filter((l) => l && !l.rest).length;
-    if (labels.length > 1 && labelCount >= 2 && cells.every((c, k) => isHeading(c, labels[k])) && i + 1 < lines.length) {
+      (l && !l.rest) || isName(c) || /^[A-Z][A-Z /&.-]{1,20}:?$/.test(c) || /^[A-Z][\p{Ll}]+(?: [\p{L}().]+){0,3}:?$/u.test(c);
+    const labelCount = labels.filter((l, k) => (l && !l.rest) || isName(cells[k])).length;
+    if (labels.length > 1 && labelCount >= 1 && cells.every((c, k) => isHeading(c, labels[k])) && i + 1 < lines.length) {
       let values = lines[i + 1].split(/\t|\s{2,}|\s\|\s/).map((c) => c.trim()).filter(Boolean);
       if (values.length !== labels.length) {
         // One OCR box for the whole row: "STALLS J 12", keeping "Dress Circle" together.
@@ -194,6 +200,8 @@ function findDetails(text: string): Detail[] {
       }
       if (values.length === labels.length) {
         labels.forEach((l, k) => {
+          // "Name (Same as Passport)" over "GABIJA DUBICKAITE"
+          if (isName(cells[k]) && PERSON.test(values[k])) out.push({ label: 'Passenger', value: titleCase(values[k]) });
           if (!l || l.rest) return;
           const v = cleanValue(l.def, values[k]);
           if (v) out.push({ label: l.def.label, value: v });
@@ -201,6 +209,13 @@ function findDetails(text: string): Detail[] {
         i++;
         continue;
       }
+    }
+
+    // "Name : Jes Jones Gardner, Mr." or "Passenger: Ms Gabija Dubickaite"
+    const who = lines[i].split('\t').map((c) => c.trim().match(/^(?:name|passenger(?:\s+name)?|lead\s+passenger|guest(?:\s+name)?|traveller)\s*:\s*(?:(?:mr|mrs|ms|miss|dr)\.?\s+)?([\p{L}][\p{L} .'-]{2,40}?)(?:,?\s*(?:mr|mrs|ms|miss|dr)\.?)?\s*$/iu)).find(Boolean);
+    if (who && who[1].trim().split(/\s+/).length >= 2) {
+      out.push({ label: 'Passenger', value: who[1].trim() });
+      continue;
     }
 
     // Every label on the line, each taking the text up to the next label as its value:
@@ -217,9 +232,19 @@ function findDetails(text: string): Detail[] {
         return;
       }
       let v = cleanValue(def, lines[i].slice(startV, endV));
-      // Label alone at the end of a line: value on the next line, if that line isn't labels.
-      if (!v && k === hits.length - 1 && !lines[i].slice(startV).trim() && lines[i + 1] && !INLINE_RE_TEST.test(lines[i + 1])) {
-        v = cleanValue(def, lines[i + 1]);
+      // In a sentence ("entry remains the right of…", "Silver class includes…") a plain word after
+      // the label isn't its value; a printed label has a colon, or a code with digits after it.
+      const prose = lines[i].split(/\s+/).length >= 6 && !/[:#]\s*$/.test(m[0]);
+      if (v && prose && !/\d/.test(v) && !/^[A-Z]{1,3}$/.test(v)) v = null;
+      // Label alone at the end of a line: value on the next line, if that line isn't labels
+      // (or the one after, when a watermark like "ADULT TICKET" got read in between).
+      if (!v && k === hits.length - 1 && !lines[i].slice(startV).trim()) {
+        for (const next of [lines[i + 1], lines[i + 2]]) {
+          // Another label ("Location :", "Trip : …") means this one was left blank.
+          if (!next || INLINE_RE_TEST.test(next) || /:\s*$/.test(next) || /^[\p{L}][\p{L} .-]{1,20}\s*:\s/u.test(next)) break;
+          v = cleanValue(def, next);
+          if (v) break;
+        }
       }
       if (v) out.push({ label: def.label, value: v });
     });
@@ -256,7 +281,7 @@ const MONTHS: Record<string, number> = {
 const MONTH_RE = Object.keys(MONTHS).sort((a, b) => b.length - a.length).join('|');
 
 const GOOD_CONTEXT = /\b(date|event|departure|depart|departs|travel|journey|valid|show|performance|match|kick.?off|doors|start|on|sailing|outbound|arrival|datum|data|fecha|ημερομηνία)\b/i;
-const BAD_CONTEXT = /\b(issued|purchased|purchase|bought|order(ed)?\s*date|booking\s*date|booked|printed|created|transaction|invoice|payment|paid|generated|expires|expiry|dob|birth)\b/i;
+const BAD_CONTEXT = /\b(date\s+of\s+issue|issue\s+date|(?:must\s+be\s+)?used\s+before|use\s+before|date\s*stamp|time\s*stamp|timestamp|issued|purchased|purchase|bought|order(ed)?\s*date|booking\s*date|booked|printed|created|transaction|invoice|payment|paid|generated|expires|expiry|dob|birth)\b/i;
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -288,6 +313,7 @@ export function findDates(lines: string[], today: Date): DateHit[] {
     const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
     const t = new Date(date).getTime();
     if (t >= start - 86_400_000) score += 1; // upcoming beats past
+    if (/\b20\d{2}\b/.test(l)) score += 1; // a full date ("26 Nov 2026") beats a passing mention ("(Per 1 Nov)")
     if (t > start + 2 * 365 * 86_400_000) score -= 2; // far future is likely an expiry
     hits.push({ date, line, score });
   };
@@ -333,10 +359,20 @@ export function parseTime(s: string): string | null {
   return `${pad(h)}:${pad(min)}`;
 }
 
-const TIME_GOOD = /\b(depart|departure|departs|dep|start|starts|show|kick.?off|performance|time|sailing|abfahrt|partenza|salida|αναχώρηση)\b/i;
+const TIME_GOOD = /\b(depart|departure|departs|dep|start|starts|show|kick.?off|performance|time|trip|sailing|abfahrt|partenza|salida|αναχώρηση)\b/i;
 const TIME_DOORS = /\b(doors|gates open|einlass|check.?in|boarding)\b/i;
 
+/**
+ * Airline style, day and month run together in capitals, then a four-digit time: "KM 3118 R 24JUN 1555" → 15:55.
+ * Only that form, so "26 Nov 2026" never reads its year as 20:26.
+ */
+const COMPACT_TIME = /\b\d{1,2}(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)(?:\d{2})?\s+([01]\d|2[0-3])([0-5]\d)\b/;
+
 function findTime(lines: string[], dateLine: number | undefined): string | undefined {
+  for (const l of lines) {
+    const m = BAD_CONTEXT.test(l) ? null : l.match(COMPACT_TIME);
+    if (m) return `${m[1]}:${m[2]}`;
+  }
   const timeOn = (l: string) => (BAD_CONTEXT.test(l) ? null : parseTime(l));
   // Same line as the event date, or just below it.
   if (dateLine != null) {
@@ -350,10 +386,12 @@ function findTime(lines: string[], dateLine: number | undefined): string | undef
       }
     }
   }
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i];
+  // Each piece of a line on its own, so "Trip … 09:00" isn't skipped for sharing a line with "Check-in Time".
+  const cells = lines.flatMap((l) => l.split('\t').map((c) => c.trim()).filter(Boolean));
+  for (let i = 0; i < cells.length; i++) {
+    const l = cells[i];
     if (TIME_GOOD.test(l) && !TIME_DOORS.test(l) && !BAD_CONTEXT.test(l)) {
-      const t = timeOn(l) ?? (l.length < 30 ? timeOn(lines[i + 1] ?? '') : null);
+      const t = timeOn(l) ?? (l.length < 30 ? timeOn(cells[i + 1] ?? '') : null);
       if (t) return t;
     }
   }
@@ -365,7 +403,7 @@ function findTime(lines: string[], dateLine: number | undefined): string | undef
 // Which kind each known company sells. A company on the ticket is the strongest clue there is.
 const COMPANY_KIND: Record<string, Kind> = {};
 const kindFor = (k: Kind, names: string[]) => names.forEach((n) => (COMPANY_KIND[n.toLowerCase()] = k));
-kindFor('flight', ['Jet2', 'easyJet', 'Ryanair', 'British Airways', 'Wizz Air', 'Aegean', 'Sky Express', 'Olympic Air', 'Lufthansa', 'KLM', 'Air France', 'Vueling', 'Iberia', 'Aer Lingus', 'Emirates', 'Qatar Airways', 'Virgin Atlantic', 'Norwegian', 'SAS', 'Swiss', 'Austrian Airlines', 'ITA Airways', 'Air New Zealand', 'Loganair', 'Eurowings', 'Transavia', 'Volotea', 'Turkish Airlines']);
+kindFor('flight', ['KM Malta Airlines', 'Air Malta', 'Jet2', 'easyJet', 'Ryanair', 'British Airways', 'Wizz Air', 'Aegean', 'Sky Express', 'Olympic Air', 'Lufthansa', 'KLM', 'Air France', 'Vueling', 'Iberia', 'Aer Lingus', 'Emirates', 'Qatar Airways', 'Virgin Atlantic', 'Norwegian', 'SAS', 'Swiss', 'Austrian Airlines', 'ITA Airways', 'Air New Zealand', 'Loganair', 'Eurowings', 'Transavia', 'Volotea', 'Turkish Airlines']);
 kindFor('ferry', ['Ionian Lines', 'Kefalonian Lines', 'Levante Ferries', 'Minoan Lines', 'ANEK', 'Blue Star Ferries', 'Seajets', 'Hellenic Seaways', 'Superfast Ferries', 'Golden Star Ferries', 'Ferryhopper', 'Brittany Ferries', 'P&O Ferries', 'Stena Line', 'DFDS', 'Irish Ferries', 'Red Funnel', 'Wightlink', 'CalMac', 'Condor Ferries', 'Grimaldi', 'Moby', 'Tirrenia', 'Corsica Ferries', 'Baleària']);
 kindFor('train', ['SplitSave', 'TrainPal', 'Seatfrog', 'Raileasy', 'SplitMyFare', 'Eurostar', 'Trainline', 'LNER', 'GWR', 'Avanti West Coast', 'CrossCountry', 'ScotRail', 'Southern', 'Thameslink', 'Northern', 'TransPennine Express', 'Southeastern', 'South Western Railway', 'Chiltern Railways', 'Trenitalia', 'Italo', 'SNCF', 'Deutsche Bahn', 'ÖBB', 'Renfe', 'Hellenic Train']);
 kindFor('bus', ['FlixBus', 'National Express', 'Megabus', 'KTEL']);
@@ -383,7 +421,7 @@ const CLUES: [Kind, number, RegExp][] = [
   ['train', 3, /\b(train|rail|railway|railcard|off-?peak|super off-?peak|anytime (day )?(single|return)|advance single|any permitted|route:? any|valid (on|until)|platform|carriage|coach [a-z]\b|seat reservation|station|bahn|trenitalia|eurostar|e-?ticket for travel)\b/gi],
   ['train', 1, /\b(single|return|outward|inbound|depart(s|ure)?|arriv(e|es|al)|reservation)\b/gi],
   ['bus', 3, /\b(bus|coach station|ktel|flixbus|national express|megabus)\b/gi],
-  ['visa', 3, /\b(e-?visa|visa|esta|electronic travel authori[sz]ation|entry permit)\b/gi],
+  ['visa', 3, /\b(e-?visa|visa|e-?voa|esta|electronic travel authori[sz]ation|entry permit|passport|immigration|levy|tourist tax|arrival card)\b/gi],
   ['car', 3, /\b(car hire|car rental|rental agreement|pick-?up location|hertz|avis|europcar|sixt|enterprise rent|parking)\b/gi],
   ['medical', 3, /\b(appointment|clinic|hospital|vaccination|vaccine|pharmacy|gp|dentist|medical)\b/gi],
   ['event', 3, /\b(theatre|theater|musical|matinee|stalls|dress circle|royal circle|grand circle|upper circle|west end|broadway|performance|ballet|opera|comedy)\b/gi],
@@ -423,26 +461,34 @@ function findRoute(lines: string[]): string | undefined {
     return v.length >= 3 && v.length <= 30 && /^[\p{L}][\p{L} .'-]+$/u.test(v) ? v : undefined;
   };
   const UI = /^(add|share|save|view|go|back|open|apple|wallet|download|print|email|send|next|previous|close|options|ticket|route|adult|child|valid)\b/i;
-  const notPlace = (x: string) => UI.test(x.trim()) || INLINE_RE_TEST.test(x) || AREA_ANY.test(x);
+  const notPlace = (x: string) => UI.test(x.trim()) || INLINE_RE_TEST.test(x) || AREA_ANY.test(x) || /\.[a-z]{2,}\b|www|@/i.test(x);
   const ARROW = [
-    /^([\p{L} .'-]{3,30}?)\s*(?:→|->|>|⇒|=>)\s*([\p{L} .'-]{3,30})$/u,
-    /^([\p{L} .'-]{3,30}?)\s+(?:–|—|-|to)\s+([\p{L} .'-]{3,30})$/u,
+    // Places may carry a note in brackets: "Lembongan (Yellow Bridge) - Gili Trawangan".
+    /^([\p{L} .'()-]{3,40}?)\s*(?:→|->|>|⇒|=>)\s*([\p{L} .'()-]{3,40})$/u,
+    /^([\p{L} .'()-]{3,40}?)\s+(?:–|—|-|to)\s+([\p{L} .'()-]{3,40})$/u,
   ];
-  lines.forEach((l, i) => {
+  // A line labelled as the route ("Route : Bangsal - Padang Bai") beats any other line that looks like one.
+  // Just that piece of the line: the phone may add a watermark word after it on the same line.
+  const routeCell = (l: string) =>
+    l.split('\t').find((c) => /^(route|journey|trip|sailing)\s*:/i.test(c.trim()) && ARROW.some((re) => re.test(c.trim().replace(/^[^:]*:\s*/, ''))));
+  const labelled = lines.findIndex((l) => routeCell(l));
+  const ordered = labelled >= 0 ? [routeCell(lines[labelled])!.trim(), ...lines] : lines;
+  ordered.forEach((l, i) => {
     const f = l.match(/^(from|departure port|origin|von|da|desde|από)\b[:\s]*(.*)$/i);
     const t = l.match(/^(to|arrival port|destination|nach|a|hasta|προς)\b[:\s]*(.*)$/i);
     if (f && !from) from = place(f[2]) ?? place(lines[i + 1] ?? '');
     if (t && !to) to = place(t[2]) ?? place(lines[i + 1] ?? '');
     if (from || to) return;
-    // "Cardiff → London", or "SSD - BIS" sitting in one cell of a row
+    // "Cardiff → London", or "SSD - BIS" sitting in one cell of a row ("Route : Bangsal - Padang Bai" too)
     for (const cell of [l.replace(/\t/g, ' '), ...l.split('\t')]) {
-      const c = cell.trim();
+      const c = cell.trim().replace(/^(route|journey|trip|sailing|line)\s*:\s*/i, '');
       const arrow = ARROW.map((re) => c.match(re)).find(Boolean);
       if (arrow && /[A-Z]/.test(arrow[1][0]) && !notPlace(arrow[1]) && !notPlace(arrow[2])) {
         from = place(arrow[1]);
         to = place(arrow[2]);
         if (from && to) {
-          arrowLine = i;
+          // Back to the line's place in the ticket (the labelled route was put first).
+          arrowLine = labelled >= 0 ? (i === 0 ? labelled : i - 1) : i;
           return;
         }
         from = to = undefined;
@@ -476,6 +522,8 @@ const titleCase = (s: string) =>
 
 const BRANDS = /^(splitsave|split save|splitmyfare|trainpal|seatfrog|raileasy|railsmartr|national rail|omio|ticketmaster|live nation|atg|atg tickets|axs|see tickets|seetickets|eventim|eventbrite|dice|skiddle|todaytix|lovetheatre|love theatre|london theatre direct|delfont|mackintosh|delfont mackintosh( theatres)?|theatres|nimax( theatres)?|ambassador theatre group|trainline|gigantic|fatsoma|tixr|stubhub|viagogo|twickets|ticketswap|fever|klook|getyourguide|viator|tiqets)$/i;
 const UI_TEXT = /^(log ?in|sign ?in|sign up|log out|my account|back|done|close|cancel|share|edit|more|menu|home|account|help|info|information|details|(ticket|event|order|booking) details|(my|your) (tickets?|orders?|bookings?)|tickets?|e-?tickets?|mobile tickets?|m-?tickets?|(view|show|see) (tickets?|order|details|more)|orders?|upcoming|past|events?|add to (apple )?wallet|add to google (wallet|pay)|transfer|sell|resale|directions|get directions|map|show more|admit one|admission|general admission|standard|adult|child|concession|full price|venue|date|time|location|barcode|qr code|ticket holder|name|today|tomorrow|tonight|booking confirmed|order confirmed|confirmed|you'?re going!?|enjoy the show!?|search|settings|wallet|for you|discover|available offline|offline|options|your ticket|your tickets|show ticket details|ticket details|show details|add to apple wallet|valid until|ticket type|route|railcard)$/i;
+/** Apps a screenshot's status bar offers to go back to ("◀ Gmail"). */
+const BACK_APP = /^(\d{1,2}\s+)?(?:<\s*)?(gmail|mail|outlook|safari|chrome|photos|messages|whatsapp|instagram|facebook|messenger|notes|files|wallet|app store|telegram|slack|teams|yahoo mail|spark)$/i;
 const NOT_TITLE = /^(adult|child|children|senior|family|student|infant|concession|day pass|season pass|qty|quantity|price|total|scan|present|show this|please|this ticket|ticket \d|\d+ of \d+|\d+ tickets?|order|booking|ref|subtotal|fee|terms|conditions|t&cs|doors|gates|age|over|under)\b/i;
 const VENUE = /\b(theatres?|theaters?|arena|stadium|hall|academy|centre|center|club|palace|pavilion|opera house|coliseum|apollo|lyceum|forum|ballroom|playhouse|dome|bowl|gardens?|ground|square|street|road|lane|london|manchester|glasgow|dublin|birmingham)\b/i;
 const SMALL = new Set(['of', 'the', 'and', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'de', 'la', 'le', 'du', 'des', 'et']);
@@ -510,6 +558,8 @@ export function findEventTitle(lines: string[], today = new Date()): string | un
       if (c.length < 3 || c.length > 50 || letters < 3) return;
       if (digits / c.length > 0.25) return;
       if (/^\d{1,2}[:.]\d{2}/.test(c) || /\b(5G|4G|LTE)\b/.test(c) || /%$/.test(c)) return;
+      // The phone's status bar: "◀ Gmail" (back to the app you came from), often read with the clock as "4 Gmail".
+      if (i < 3 && (/[◀◂]/.test(c) || BACK_APP.test(c.replace(/^</, '').trim()))) return;
       if (UI_TEXT.test(c) || BRANDS.test(c) || NOT_TITLE.test(c) || labelAt(c) || AREA_ANY.test(c)) return;
       if (/@|www\.|https?:|\.(com|co\.uk|org|net)\b/i.test(c)) return;
       if (/[-–]$/.test(c)) return; // a word cut off at the edge of a poster
@@ -548,6 +598,7 @@ const COMPANIES = [
   'Jet2', 'easyJet', 'Ryanair', 'British Airways', 'Wizz Air', 'TUI', 'Aegean', 'Sky Express', 'Olympic Air', 'Lufthansa', 'KLM',
   'Air France', 'Vueling', 'Iberia', 'Aer Lingus', 'Emirates', 'Qatar Airways', 'Virgin Atlantic', 'Norwegian', 'SAS', 'Swiss',
   'Austrian Airlines', 'ITA Airways', 'Air New Zealand', 'Loganair', 'Eurowings', 'Transavia', 'Volotea', 'Turkish Airlines',
+  'KM Malta Airlines', 'Air Malta',
   // ferries
   'Ionian Lines', 'Kefalonian Lines', 'Levante Ferries', 'Minoan Lines', 'ANEK', 'Blue Star Ferries', 'Seajets', 'Hellenic Seaways',
   'Superfast Ferries', 'Golden Star Ferries', 'Ferryhopper', 'Brittany Ferries', 'P&O Ferries', 'Stena Line', 'DFDS', 'Irish Ferries',
@@ -567,6 +618,9 @@ const COMPANY_RE = new RegExp(
   'iu',
 );
 
+/** A line that is only an operator's name: one to three words, then a word like Ferry, Lines or Airways. */
+const OPERATOR_RE = /^[ \t]*((?:[\p{Lu}][\p{L}&'.-]*[ \t]+){1,3}(?:fast[ \t]+ferry|fast[ \t]+boats?|ferries|ferry|lines|shipping|airlines|airways|railways?|coaches|cruises))[ \t]*$/imu;
+
 /** The airline, ferry line or ticket seller named on the ticket, if it's one we know. */
 export function findCompany(text: string): string | undefined {
   const m = text.match(COMPANY_RE);
@@ -574,7 +628,10 @@ export function findCompany(text: string): string | undefined {
     // Logos OCR badly; some companies give themselves away another way.
     if (/\bget\s*your\s*guide\b|\bGYG[A-Z0-9]{6,}\b/i.test(text)) return 'GetYourGuide';
     if (/\bsplit\s*save\b/i.test(text)) return 'SplitSave';
-    return undefined;
+    // Not one we know: a heading that names a ferry line, airline or coach company ("EKAJAYA FAST FERRY").
+    // Each piece of a line on its own: the phone may put a watermark word on the same line.
+    const named = text.replace(/\t/g, '\n').match(OPERATOR_RE);
+    return named ? titleCase(named[1].replace(/\s+/g, ' ')) : undefined;
   }
   const found = m[1].replace(/\s+/g, ' ').toLowerCase();
   return COMPANIES.find((c) => c.toLowerCase() === found) ?? m[1];
@@ -668,6 +725,37 @@ const PER_TICKET = new Set([...LABELS.filter((l) => l.perTicket).map((l) => l.la
  * @param pages each page's text and how many codes were found on it, in order
  * @param ticketCount total tickets the importer created
  */
+/** IATA codes of airlines people fly from the UK and Europe, for boarding passes that don't spell the name out. */
+const AIRLINE_CODES: Record<string, string> = {
+  U2: 'easyJet', EC: 'easyJet', DS: 'easyJet', FR: 'Ryanair', RK: 'Ryanair', BA: 'British Airways', W6: 'Wizz Air', W4: 'Wizz Air',
+  W9: 'Wizz Air', LS: 'Jet2', BY: 'TUI', TB: 'TUI', A3: 'Aegean', GQ: 'Sky Express', OA: 'Olympic Air', LH: 'Lufthansa', KL: 'KLM',
+  AF: 'Air France', VY: 'Vueling', IB: 'Iberia', EI: 'Aer Lingus', EK: 'Emirates', QR: 'Qatar Airways', VS: 'Virgin Atlantic',
+  DY: 'Norwegian', D8: 'Norwegian', SK: 'SAS', LX: 'Swiss', OS: 'Austrian Airlines', AZ: 'ITA Airways', NZ: 'Air New Zealand',
+  LM: 'Loganair', EW: 'Eurowings', HV: 'Transavia', TO: 'Transavia', V7: 'Volotea', TK: 'Turkish Airlines', KM: 'KM Malta Airlines',
+};
+
+/** Travel documents say what they are: "Bali Tourist Levy", "Indonesia Visa on Arrival". */
+function documentTitle(text: string): string | undefined {
+  const doc = /levy\s+voucher|tourist\s+levy|tourism\s+levy/i.test(text)
+    ? 'Tourist Levy'
+    : /\be-?voa\b|visa\s+on\s+arrival/i.test(text)
+      ? 'Visa on Arrival'
+      : /\be-?visa\b/i.test(text)
+        ? 'e-Visa'
+        : /\besta\b/i.test(text)
+          ? 'ESTA'
+          : /electronic\s+travel\s+authori[sz]ation/i.test(text)
+            ? 'ETA'
+            : undefined;
+  if (!doc) return undefined;
+  // Where it's for: "Bali Provincial Government", "Republic of Indonesia", "Indonesia Immigration".
+  const place =
+    text.match(/\b([A-Z][a-z]+)\s+Provincial\s+Government\b/)?.[1] ??
+    text.match(/\bRepublic\s+of\s+([A-Z][a-z]+)\b/)?.[1] ??
+    text.match(/\b([A-Z][a-z]+)\s+Immigration\b/)?.[1];
+  return place ? `${place} ${doc}` : doc;
+}
+
 export function extractDetails(pages: PageText[], ticketCount: number, today = new Date()): Extracted {
   const allText = pages.map((p) => p.text).join('\n');
   const lines = allText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
@@ -727,7 +815,8 @@ export function extractDetails(pages: PageText[], ticketCount: number, today = n
   const startTime = departs?.value ?? time ?? doors?.value;
   if (doors && doors.value === startTime) shared.splice(shared.indexOf(doors), 1);
 
-  const company = findCompany(allText);
+  // Not named in the text: the airline from the flight number in the barcode ("KM3118" → KM Malta Airlines).
+  const company = findCompany(allText) ?? (pass ? AIRLINE_CODES[pass.flight.slice(0, 2).toUpperCase()] : undefined);
   if (company && !shared.some((d) => d.label === 'Company')) shared.unshift({ label: 'Company', value: company });
 
   const bp = pass;
@@ -745,7 +834,9 @@ export function extractDetails(pages: PageText[], ticketCount: number, today = n
   const route = findRoute(lines) ?? (bp ? `${bp.from} → ${bp.to}` : undefined);
   const firstPage = (pages[0]?.text ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const travel = kind === 'ferry' || kind === 'train' || kind === 'bus' || kind === 'flight';
-  const title = travel ? route ?? findEventTitle(firstPage, today) : findEventTitle(firstPage, today) ?? route;
+  const title =
+    (kind === 'visa' ? documentTitle(allText) : undefined) ??
+    (travel ? route ?? findEventTitle(firstPage, today) : findEventTitle(firstPage, today) ?? route);
   return {
     date: best?.date ?? bp?.date,
     time: startTime,

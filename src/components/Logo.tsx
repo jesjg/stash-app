@@ -1,19 +1,22 @@
-import Svg, { G, Line, Rect, Text as SvgText } from 'react-native-svg';
-import { colors, fonts } from '../theme';
+import Svg, { Circle, G, Path, Rect, Text as SvgText } from 'react-native-svg';
 
-/** The Stash mark: an orange ticket stacked on a black one, with a black S. Same as the app icon. */
+const VIOLET = '#9747FF';
+const TICKET = 'M14 0H86A14 14 0 0 1 100 14V74A10 10 0 0 0 100 94V122A14 14 0 0 1 86 136H14A14 14 0 0 1 0 122V94A10 10 0 0 0 0 74V14A14 14 0 0 1 14 0Z';
+const DOTS = ['#FF2D95', '#1E7BFF', '#00D16C'];
+
+/** The Stash mark: a white ticket with a big S and pink, blue and green dots, tilted on violet. Same as the app icon. */
 export function Logo({ size = 44 }: { size?: number }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 100 100" accessibilityLabel="Stash">
-      <G transform="translate(44 47) rotate(-10)">
-        <Rect x={-27} y={-36} width={54} height={72} rx={8} fill={colors.ink} />
-      </G>
-      <G transform="translate(54 51) rotate(6)">
-        <Rect x={-28} y={-37} width={56} height={74} rx={8} fill={colors.accent} />
-        <SvgText x={0} y={15} fontSize={46} fontFamily={fonts.display} fill={colors.ink} textAnchor="middle">
+    <Svg width={size} height={size} viewBox="0 0 220 220" accessibilityLabel="Stash">
+      <Rect width={220} height={220} rx={50} fill={VIOLET} />
+      <G transform="translate(110 110) rotate(-8) scale(1.2) translate(-50 -68)">
+        <Path d={TICKET} fill="#FFFFFF" />
+        <SvgText x={50} y={80} fontSize={80} fontWeight="800" fill={VIOLET} textAnchor="middle">
           S
         </SvgText>
-        <Line x1={-22} y1={18.5} x2={23} y2={18.5} stroke="#FFFFFF" strokeWidth={1.4} strokeLinecap="round" strokeDasharray="3.4 2.4" />
+        {DOTS.map((c, i) => (
+          <Circle key={c} cx={26 + i * 24} cy={110} r={8} fill={c} />
+        ))}
       </G>
     </Svg>
   );

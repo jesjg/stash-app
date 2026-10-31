@@ -1,5 +1,4 @@
 import Constants from 'expo-constants';
-import { Image } from 'expo-image';
 import { Toggle } from '../components/Toggle';
 import * as Updates from 'expo-updates';
 import { router, useFocusEffect } from 'expo-router';
@@ -8,24 +7,13 @@ import { AppState, Linking, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../components/Icon';
 import { RoundButton } from '../components/RoundButton';
-import { Swatches } from '../components/Swatches';
-import { showToast } from '../components/Toast';
 import { enableScreenshotCheck, screenshotsSupported } from '../lib/screenshots';
 import { reminderStatus, type ReminderStatus } from '../lib/reminders';
 import { askPersistentBanners } from '../lib/persistent';
-import { pickCoverPhoto } from '../lib/pickers';
-import { ensureReminders, setSettings, setThemePhoto, useStore } from '../lib/store';
-import { colors, fonts, label } from '../theme';
-
-const KEEP = [
-  { days: 7, label: '1 week' },
-  { days: 30, label: '30 days' },
-  { days: 90, label: '90 days' },
-  { days: 0, label: 'Forever' },
-];
+import { ensureReminders, setSettings, useStore } from '../lib/store';
+import { colors, font, label } from '../theme';
 
 export default function Settings() {
-  const keep = useStore((s) => s.settings.keepPastDays);
   const count = useStore((s) => s.stubs.length);
   const [reminders, setReminders] = useState<ReminderStatus | null>(null);
   useFocusEffect(
@@ -36,9 +24,7 @@ export default function Settings() {
     }, []),
   );
   const lockScreen = useStore((s) => s.settings.lockScreen);
-  const accent = useStore((s) => s.settings.accent);
-  const holoAll = useStore((s) => s.settings.holoAll);
-  const themePhoto = useStore((s) => s.settings.themePhoto);
+  const sparkles = useStore((s) => s.settings.sparkles);
   const shots = useStore((s) => s.settings.screenshots);
   const insets = useSafeAreaInsets();
 
@@ -52,75 +38,14 @@ export default function Settings() {
       </View>
 
       <View style={styles.block}>
-        <Text style={label}>Keep past tickets</Text>
-        <View style={styles.chips}>
-          {KEEP.map((k) => {
-            const on = k.days === keep;
-            return (
-              <Pressable
-                key={k.days}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                onPress={() => setSettings({ keepPastDays: k.days })}
-                style={[styles.chip, on && styles.chipOn]}
-              >
-                <Text style={[styles.chipText, on && styles.chipTextOn]}>{k.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Text style={styles.note}>
-          {keep ? `Tickets delete themselves ${keep} days after the event.` : 'Old tickets stay until you clear them.'}
-        </Text>
-      </View>
-
-      <View style={styles.block}>
         <Text style={label}>Appearance</Text>
-        <Text style={styles.rowText}>App colour</Text>
-        <Swatches
-          value={accent}
-          onChange={(id) => {
-            if (id === (accent ?? 'orange')) return;
-            setSettings({ accent: id });
-            // Colours are set as the app starts, so restart it to repaint everything.
-            Updates.reloadAsync().catch(() => showToast('Close and reopen Stash to see the new colour.'));
-          }}
-        />
-        <Text style={styles.note}>Buttons and ticket screens. Stash restarts to apply it.</Text>
         <View style={styles.row}>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={styles.rowText}>Holographic tickets</Text>
-            <Text style={styles.note}>A foil shimmer on every ticket.</Text>
+            <Text style={styles.rowText}>Sparkle tickets</Text>
+            <Text style={styles.note}>A little sparkle on every ticket.</Text>
           </View>
-          <Toggle value={!!holoAll} onValueChange={(v) => setSettings({ holoAll: v })} accessibilityLabel="Holographic tickets" />
+          <Toggle value={!!sparkles} onValueChange={(v) => setSettings({ sparkles: v })} accessibilityLabel="Sparkle tickets" />
         </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={async () => {
-            try {
-              const uri = await pickCoverPhoto();
-              if (uri) {
-                await setThemePhoto(uri);
-                showToast('Background photo set for all tickets');
-              }
-            } catch (e) {
-              showToast(e instanceof Error ? e.message : "Couldn't use that photo");
-            }
-          }}
-          style={styles.row}
-        >
-          {themePhoto ? <Image source={{ uri: themePhoto }} style={styles.thumb} contentFit="cover" /> : null}
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={styles.rowText}>{themePhoto ? 'Change background photo' : 'Background photo for all tickets'}</Text>
-            <Text style={styles.note}>Shows behind every ticket card without its own photo.</Text>
-          </View>
-          <Icon name="photo" size={18} color={colors.ink} stroke={2.2} />
-        </Pressable>
-        {themePhoto ? (
-          <Pressable accessibilityRole="button" onPress={() => setThemePhoto(null)} style={styles.row}>
-            <Text style={styles.rowText}>Remove background photo</Text>
-          </Pressable>
-        ) : null}
       </View>
 
       <View style={styles.block}>
@@ -205,11 +130,11 @@ export default function Settings() {
         <Text style={styles.body}>
           Your tickets never leave this phone unless you send them. No account, no server. Codes are read on-device.
         </Text>
-        <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://imriverjones.github.io/stubs-app/privacy/')} style={styles.row}>
+        <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://jesjg.github.io/stash-app/privacy/')} style={styles.row}>
           <Text style={styles.rowText}>Privacy policy</Text>
           <Icon name="arrow" size={16} color={colors.ink} />
         </Pressable>
-        <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://imriverjones.github.io/stubs-app/support/')} style={styles.row}>
+        <Pressable accessibilityRole="link" onPress={() => Linking.openURL('https://jesjg.github.io/stash-app/support/')} style={styles.row}>
           <Text style={styles.rowText}>Help and support</Text>
           <Icon name="arrow" size={16} color={colors.ink} />
         </Pressable>
@@ -231,15 +156,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ground },
   content: { padding: 20, gap: 28 },
   bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontFamily: fonts.display, fontSize: 40, textTransform: 'uppercase', color: colors.ink },
+  title: { ...font.display, fontSize: 30, color: colors.ink },
   block: { gap: 12 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1.5, borderColor: colors.ink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 },
-  chipOn: { backgroundColor: colors.ink },
-  chipText: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.ink },
-  chipTextOn: { color: colors.accent },
-  note: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft },
-  body: { fontFamily: fonts.body, fontSize: 16, lineHeight: 23, color: colors.ink },
+  note: { ...font.mono, fontSize: 12, color: colors.inkSoft },
+  body: { ...font.body, fontSize: 16, lineHeight: 23, color: colors.ink },
   row: {
     minHeight: 52,
     backgroundColor: colors.paper,
@@ -249,7 +169,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  rowText: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.ink },
-  thumb: { width: 40, height: 40, borderRadius: 8, marginRight: 12 },
-  footer: { fontFamily: fonts.mono, fontSize: 12, color: colors.inkSoft, textAlign: 'center' },
+  rowText: { ...font.bodyBold, fontSize: 16, color: colors.ink },
+  footer: { ...font.mono, fontSize: 12, color: colors.inkSoft, textAlign: 'center' },
 });

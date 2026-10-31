@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { ActionSheetIOS, Alert, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { dayKey, fmt, relativeDay } from '../lib/dates';
 import { copyText } from '../lib/native';
-import { ticketAccent } from '../lib/palette';
 import type { Stub } from '../lib/types';
-import { colors, fonts } from '../theme';
+import { colors, font } from '../theme';
 import { Perforated } from './Perforated';
 import { showToast } from './Toast';
 
@@ -70,7 +69,7 @@ export function StayCard({ stub }: { stub: Stub }) {
   return (
     <Perforated
       color={colors.paperWarm}
-      ground={ticketAccent(stub.color, colors.accent)}
+      ground={colors.ground}
       radius={22}
       notch={26}
       rule="#CFCFC6"
@@ -92,7 +91,7 @@ export function StayCard({ stub }: { stub: Stub }) {
             {ref ? (
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Booking ref</Text>
-                <Text style={[styles.fieldValue, { fontFamily: fonts.mono }]} selectable>
+                <Text style={[styles.fieldValue, { ...font.mono }]} selectable>
                   {ref}
                 </Text>
               </View>
@@ -178,27 +177,27 @@ export function StayCard({ stub }: { stub: Stub }) {
 
 const styles = StyleSheet.create({
   top: { padding: 22, paddingBottom: 18, gap: 12 },
-  kicker: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 1.6, textTransform: 'uppercase', color: colors.inkSoft },
-  title: { fontFamily: fonts.display, fontSize: 38, textTransform: 'uppercase', color: colors.ink },
+  kicker: { ...font.mono, fontSize: 11, letterSpacing: 1.6, textTransform: 'uppercase', color: colors.inkSoft },
+  title: { ...font.display, fontSize: 28, color: colors.ink },
   grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 28, rowGap: 10 },
   field: { gap: 2 },
-  fieldLabel: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkFaint },
-  fieldValue: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.ink },
+  fieldLabel: { ...font.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkFaint },
+  fieldValue: { ...font.bodyBold, fontSize: 15, color: colors.ink },
   bottom: { padding: 22, gap: 22 },
   block: { gap: 8 },
-  blockLabel: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase', color: colors.inkSoft },
-  address: { fontFamily: fonts.bodyBold, fontSize: 19, lineHeight: 25, color: colors.ink },
+  blockLabel: { ...font.mono, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase', color: colors.inkSoft },
+  address: { ...font.bodyBold, fontSize: 19, lineHeight: 25, color: colors.ink },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  code: { fontFamily: fonts.display, fontSize: 52, letterSpacing: 2, color: colors.ink },
-  codeWords: { fontFamily: fonts.bodyBold, fontSize: 20, lineHeight: 26, letterSpacing: 0 },
-  wifiName: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.ink },
-  password: { fontFamily: fonts.monoBold, fontSize: 18, color: colors.ink, flexShrink: 1 },
-  phone: { fontFamily: fonts.mono, fontSize: 16, color: colors.ink },
-  notes: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: colors.ink },
-  more: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline', marginTop: 6 },
-  empty: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22, color: colors.inkSoft },
+  code: { ...font.display, fontSize: 38, letterSpacing: 2, color: colors.ink },
+  codeWords: { ...font.bodyBold, fontSize: 20, lineHeight: 26, letterSpacing: 0 },
+  wifiName: { ...font.bodyBold, fontSize: 18, color: colors.ink },
+  password: { ...font.monoBold, fontSize: 18, color: colors.ink, flexShrink: 1 },
+  phone: { ...font.mono, fontSize: 16, color: colors.ink },
+  notes: { ...font.body, fontSize: 15, lineHeight: 22, color: colors.ink },
+  more: { ...font.bodyBold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline', marginTop: 6 },
+  empty: { ...font.body, fontSize: 15, lineHeight: 22, color: colors.inkSoft },
   btn: { minHeight: 44, paddingHorizontal: 18, borderRadius: 999, borderWidth: 2, borderColor: colors.ink, justifyContent: 'center' },
   btnPrimary: { backgroundColor: colors.ink },
-  btnText: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.ink },
+  btnText: { ...font.bodyBold, fontSize: 15, color: colors.ink },
   btnTextPrimary: { color: colors.accent },
 });

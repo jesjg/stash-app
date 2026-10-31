@@ -15,6 +15,11 @@ const cases: [string, string, Want][] = [
     { title: 'Ubud: Quad ATV Waterfalls & Barong Caves', kind: 'activity', date: '2026-12-01', time: '12:30', company: 'GetYourGuide' },
   ],
   [
+    'GetYourGuide screenshot opened from Gmail (status bar reads "4 Gmail")',
+    ['4:13', '4 ◀ Gmail', 'Your ticket', 'Available offline', 'Tue, Dec 1, 2026\t12:30 pm', 'Ubud: Quad ATV Waterfalls & Barong Caves', 'Tandem Quad Waterfalls & Barong Caves (1', 'voucher for 2 people)', 'Group', '1 Group up to 2', 'GYGFWVZF739H'].join('\n'),
+    { title: 'Ubud: Quad ATV Waterfalls & Barong Caves', company: 'GetYourGuide' },
+  ],
+  [
     'Ferry with a written route',
     ['Ionian Lines', 'Nidri → Kefalonia', 'Departure 14 Nov 2026 09:00', 'Deck passenger'].join('\n'),
     { title: 'Nidri → Kefalonia', kind: 'ferry', date: '2026-11-14', time: '09:00' },
@@ -40,6 +45,31 @@ for (const [name, text, want] of cases) {
     }
   }
 }
+// Words in sentences that aren't details: "entry remains…", "class includes…".
+const noDetails: [string, string, string][] = [
+  ['Indonesia e-VOA disclaimer', 'Issuance of e-VOA does not guarantee entry to the Republic of Indonesia, the decision of entry remains the right of the Immigration Officer', 'Entrance'],
+  ['GetYourGuide class description', 'Ubud: 2-Hour Make Your Own Silver class Includes all materials and a drink', 'Deck'],
+];
+for (const [name, text, label] of noDetails) {
+  const got = extractDetails([{ text, codes: 1 }], 1, today);
+  const found = [...got.shared, ...got.perTicket.flat()].find((d) => d.label === label);
+  if (found) {
+    bad++;
+    console.log(`✗ ${name}: read ${label} "${found.value}" from a sentence`);
+  }
+}
+const kept: [string, string, string, string][] = [
+  ['Labelled entrance', 'Entrance: North', 'Entrance', 'North'],
+  ['Stadium entry code', 'Please use Entry D4 for this match', 'Entrance', 'D4'],
+];
+for (const [name, text, label, value] of kept) {
+  const got = extractDetails([{ text, codes: 1 }], 1, today);
+  const found = [...got.shared, ...got.perTicket.flat()].find((d) => d.label === label);
+  if (found?.value !== value) {
+    bad++;
+    console.log(`✗ ${name}: ${label} was ${JSON.stringify(found?.value)}, wanted ${value}`);
+  }
+}
 const kinds: [string, string][] = [
   ['train', 'GWR\nOff-Peak Return\nCardiff Central to London Paddington\nRoute: Any Permitted\nCoach C Seat 42\nAdult ticket'],
   ['flight', 'Ryanair\nBoarding pass\nGate closes 06:20\nSeat 14C'],
@@ -54,5 +84,5 @@ for (const [want, text] of kinds) {
     console.log(`✗ kind: ${JSON.stringify(text.split('\n')[0])} was ${got}, wanted ${want}`);
   }
 }
-console.log(bad ? `${bad} wrong` : `All ${cases.length + kinds.length} tickets read right`);
+console.log(bad ? `${bad} wrong` : `All ${cases.length + noDetails.length + kept.length + kinds.length} tickets read right`);
 process.exit(bad ? 1 : 0);

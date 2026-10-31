@@ -80,7 +80,7 @@ function labelAt(cell: string): { def: LabelDef; rest: string } | null {
 }
 
 const STOP = new Set(
-  'the and via at of in on for to from by is are be this that your you with open opens opening closes closed fee fees number information details detail time date only please see free all any none here there per'.split(' '),
+  'the and via at of in on for to from by is are be this that your you with open opens opening closes closed fee fees number information details detail time date only please see free all any none here there per includes include included including remains remain must may will can not required requirements subject valid applies apply'.split(' '),
 );
 
 // Theatre and venue areas: "Stalls", "Dress Circle", "Grand Circle", "Upper Tier", "Box C".
@@ -217,6 +217,10 @@ function findDetails(text: string): Detail[] {
         return;
       }
       let v = cleanValue(def, lines[i].slice(startV, endV));
+      // In a sentence ("entry remains the right of…", "Silver class includes…") a plain word after
+      // the label isn't its value; a printed label has a colon, or a code with digits after it.
+      const prose = lines[i].split(/\s+/).length >= 6 && !/[:#]\s*$/.test(m[0]);
+      if (v && prose && !/\d/.test(v) && !/^[A-Z]{1,3}$/.test(v)) v = null;
       // Label alone at the end of a line: value on the next line, if that line isn't labels.
       if (!v && k === hits.length - 1 && !lines[i].slice(startV).trim() && lines[i + 1] && !INLINE_RE_TEST.test(lines[i + 1])) {
         v = cleanValue(def, lines[i + 1]);
@@ -476,6 +480,8 @@ const titleCase = (s: string) =>
 
 const BRANDS = /^(splitsave|split save|splitmyfare|trainpal|seatfrog|raileasy|railsmartr|national rail|omio|ticketmaster|live nation|atg|atg tickets|axs|see tickets|seetickets|eventim|eventbrite|dice|skiddle|todaytix|lovetheatre|love theatre|london theatre direct|delfont|mackintosh|delfont mackintosh( theatres)?|theatres|nimax( theatres)?|ambassador theatre group|trainline|gigantic|fatsoma|tixr|stubhub|viagogo|twickets|ticketswap|fever|klook|getyourguide|viator|tiqets)$/i;
 const UI_TEXT = /^(log ?in|sign ?in|sign up|log out|my account|back|done|close|cancel|share|edit|more|menu|home|account|help|info|information|details|(ticket|event|order|booking) details|(my|your) (tickets?|orders?|bookings?)|tickets?|e-?tickets?|mobile tickets?|m-?tickets?|(view|show|see) (tickets?|order|details|more)|orders?|upcoming|past|events?|add to (apple )?wallet|add to google (wallet|pay)|transfer|sell|resale|directions|get directions|map|show more|admit one|admission|general admission|standard|adult|child|concession|full price|venue|date|time|location|barcode|qr code|ticket holder|name|today|tomorrow|tonight|booking confirmed|order confirmed|confirmed|you'?re going!?|enjoy the show!?|search|settings|wallet|for you|discover|available offline|offline|options|your ticket|your tickets|show ticket details|ticket details|show details|add to apple wallet|valid until|ticket type|route|railcard)$/i;
+/** Apps a screenshot's status bar offers to go back to ("◀ Gmail"). */
+const BACK_APP = /^(\d{1,2}\s+)?(?:<\s*)?(gmail|mail|outlook|safari|chrome|photos|messages|whatsapp|instagram|facebook|messenger|notes|files|wallet|app store|telegram|slack|teams|yahoo mail|spark)$/i;
 const NOT_TITLE = /^(adult|child|children|senior|family|student|infant|concession|day pass|season pass|qty|quantity|price|total|scan|present|show this|please|this ticket|ticket \d|\d+ of \d+|\d+ tickets?|order|booking|ref|subtotal|fee|terms|conditions|t&cs|doors|gates|age|over|under)\b/i;
 const VENUE = /\b(theatres?|theaters?|arena|stadium|hall|academy|centre|center|club|palace|pavilion|opera house|coliseum|apollo|lyceum|forum|ballroom|playhouse|dome|bowl|gardens?|ground|square|street|road|lane|london|manchester|glasgow|dublin|birmingham)\b/i;
 const SMALL = new Set(['of', 'the', 'and', 'a', 'an', 'in', 'on', 'at', 'to', 'for', 'de', 'la', 'le', 'du', 'des', 'et']);
@@ -510,6 +516,8 @@ export function findEventTitle(lines: string[], today = new Date()): string | un
       if (c.length < 3 || c.length > 50 || letters < 3) return;
       if (digits / c.length > 0.25) return;
       if (/^\d{1,2}[:.]\d{2}/.test(c) || /\b(5G|4G|LTE)\b/.test(c) || /%$/.test(c)) return;
+      // The phone's status bar: "◀ Gmail" (back to the app you came from), often read with the clock as "4 Gmail".
+      if (i < 3 && (/[◀◂]/.test(c) || BACK_APP.test(c.replace(/^</, '').trim()))) return;
       if (UI_TEXT.test(c) || BRANDS.test(c) || NOT_TITLE.test(c) || labelAt(c) || AREA_ANY.test(c)) return;
       if (/@|www\.|https?:|\.(com|co\.uk|org|net)\b/i.test(c)) return;
       if (/[-–]$/.test(c)) return; // a word cut off at the edge of a poster

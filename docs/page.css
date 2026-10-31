@@ -1,15 +1,15 @@
-:root { --ground:#EDEDE9; --paper:#F7F7F3; --ink:#111; --soft:#55554F; --rule:#CFCFC8; --accent:#FF5A1F; }
+:root { --ground:#FFFFFF; --paper:#F7F7F7; --ink:#111; --soft:#666; --rule:#EBEBEB; --accent:#9747FF; }
 * { box-sizing:border-box; }
-body { margin:0; background:var(--ground); color:var(--ink); font-family:'Space Grotesk', system-ui, sans-serif; line-height:1.55; }
+body { margin:0; background:var(--ground); color:var(--ink); font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
 main { max-width:680px; margin:0 auto; padding:28px 16px 56px; }
 .brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--ink); }
-.brand i { width:34px; height:34px; border-radius:9px; background:var(--accent); display:grid; place-items:center; font:400 20px Anton, Impact, sans-serif; font-style:normal; }
-.brand b { font:400 24px Anton, Impact, sans-serif; text-transform:uppercase; letter-spacing:.5px; }
-h1 { font:400 44px/1.05 Anton, Impact, sans-serif; text-transform:uppercase; margin:28px 0 6px; }
-.updated { font:12px 'Space Mono', monospace; color:var(--soft); letter-spacing:1px; text-transform:uppercase; }
+.brand img { width:36px; height:36px; border-radius:9px; display:block; }
+.brand b { font-size:26px; font-weight:800; letter-spacing:-0.8px; }
+h1 { font-size:40px; line-height:1.05; font-weight:800; letter-spacing:-1px; margin:28px 0 6px; }
+.updated { font-size:13px; font-weight:600; color:var(--soft); letter-spacing:1.2px; text-transform:uppercase; }
 h2 { font-size:19px; margin:30px 0 6px; }
 p, li { font-size:16px; }
 ul { padding-left:20px; }
-.card { background:var(--paper); border-radius:16px; padding:18px 20px; margin-top:18px; }
-a { color:var(--ink); }
+.card { background:var(--paper); border-radius:20px; padding:18px 20px; margin-top:18px; }
+a { color:var(--accent); }
 nav { margin-top:40px; padding-top:16px; border-top:1px solid var(--rule); display:flex; gap:18px; font-size:15px; flex-wrap:wrap; }

@@ -6,35 +6,34 @@
 <title>Add to Stash button maker</title>
 <meta name="description" content="Give your customers an Add to Stash button: their ticket on the lock screen on the day, no Apple Wallet setup needed.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <style>
-  :root { --ground:#EDEDE9; --paper:#fff; --ink:#111; --soft:#55554F; --faint:#8A8A82; --rule:#D6D6CF; --accent:#FF5A1F; }
+  :root { --ground:#FFFFFF; --paper:#fff; --ink:#111; --soft:#666; --faint:#8A8A82; --rule:#D6D6CF; --accent:#9747FF; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--ground); color:var(--ink); font-family:'Space Grotesk', system-ui, sans-serif; }
+  body { margin:0; background:var(--ground); color:var(--ink); font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; }
   header, main { max-width:980px; margin:0 auto; padding:0 16px; }
   header { padding-top:28px; }
-  .k { font:12px 'Space Mono', monospace; letter-spacing:1.6px; text-transform:uppercase; color:var(--soft); }
-  h1 { font-family:Anton, Impact, sans-serif; font-weight:400; text-transform:uppercase; font-size:clamp(36px, 7vw, 60px); line-height:1; margin:6px 0 10px; }
+  .k { font:12px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; letter-spacing:1.6px; text-transform:uppercase; color:var(--soft); }
+  h1 { font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; font-weight:800; letter-spacing:-0.8px; text-transform:uppercase; font-size:clamp(36px, 7vw, 60px); line-height:1; margin:6px 0 10px; }
   .lede { max-width:620px; font-size:17px; line-height:1.5; margin:0 0 24px; }
   .cols { display:grid; grid-template-columns:1fr; gap:20px; padding-bottom:48px; }
   @media (min-width: 860px) { .cols { grid-template-columns: 1.1fr 0.9fr; } }
   .card { background:var(--paper); border-radius:18px; padding:20px; }
-  h2 { font:700 13px 'Space Mono', monospace; letter-spacing:1.4px; text-transform:uppercase; margin:0 0 14px; }
-  label { display:block; font:11px 'Space Mono', monospace; letter-spacing:1px; text-transform:uppercase; color:var(--soft); margin:12px 0 5px; }
-  input, select, textarea { width:100%; font:16px 'Space Grotesk', sans-serif; padding:11px 12px; border:1.5px solid var(--rule); border-radius:10px; background:#fff; color:var(--ink); }
+  h2 { font:700 13px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; letter-spacing:1.4px; text-transform:uppercase; margin:0 0 14px; }
+  label { display:block; font:11px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; letter-spacing:1px; text-transform:uppercase; color:var(--soft); margin:12px 0 5px; }
+  input, select, textarea { width:100%; font:16px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; padding:11px 12px; border:1.5px solid var(--rule); border-radius:10px; background:#fff; color:var(--ink); }
   textarea { min-height:84px; resize:vertical; }
   .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .hint { font:12px/1.5 'Space Mono', monospace; color:var(--faint); margin-top:5px; }
+  .hint { font:12px/1.5 -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; color:var(--faint); margin-top:5px; }
   .out { display:grid; gap:14px; }
-  .linkbox { font:12px 'Space Mono', monospace; word-break:break-all; background:var(--ground); border-radius:10px; padding:10px; max-height:120px; overflow:auto; }
-  button { font:700 15px 'Space Grotesk', sans-serif; border:0; border-radius:999px; padding:12px 18px; cursor:pointer; }
+  .linkbox { font:12px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; word-break:break-all; background:var(--ground); border-radius:10px; padding:10px; max-height:120px; overflow:auto; }
+  button { font:700 15px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; border:0; border-radius:999px; padding:12px 18px; cursor:pointer; }
   .b1 { background:var(--accent); color:var(--ink); } .b2 { background:var(--ink); color:#fff; } .b3 { background:transparent; border:2px solid var(--ink); }
   .btns { display:flex; flex-wrap:wrap; gap:8px; }
   .qr img { width:160px; height:160px; image-rendering:pixelated; }
   .pitch li { margin:6px 0; line-height:1.45; }
-  .err { color:#B42318; font:13px 'Space Mono', monospace; }
-  table { width:100%; border-collapse:collapse; font:12px 'Space Mono', monospace; } td, th { text-align:left; padding:4px 6px; border-bottom:1px solid var(--rule); }
+  .err { color:#B42318; font:13px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; }
+  table { width:100%; border-collapse:collapse; font:12px -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif; } td, th { text-align:left; padding:4px 6px; border-bottom:1px solid var(--rule); }
 </style>
 </head>
 <body>

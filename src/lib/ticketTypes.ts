@@ -12,13 +12,19 @@ const STYLES: Partial<Record<Kind, Omit<TicketType, 'label'>>> = {
   flight: { color: FLIGHT, icon: 'typePlane' },
   train: { color: '#00D16C', icon: 'typeTrain' },
   event: { color: '#FF2D95', icon: 'typeTicket' },
-  gig: { color: '#FF2D95', icon: 'typeTicket' },
+  gig: { color: '#FF2D95', icon: 'typeMusic' },
   activity: { color: '#FF6B1F', icon: 'typeMountain' },
   visa: { color: '#00B4E0', icon: 'typePassport' },
   stay: { color: '#9747FF', icon: 'typeBed' },
+  // No colour of their own in the design: Flight blue, each with its own icon.
+  ferry: { color: FLIGHT, icon: 'typeShip' },
+  bus: { color: FLIGHT, icon: 'typeBus' },
+  car: { color: FLIGHT, icon: 'typeCar' },
+  medical: { color: FLIGHT, icon: 'typeMedical' },
+  other: { color: FLIGHT, icon: 'typeTag' },
 };
 
-/** Types without their own colour use Flight blue and a plain ticket icon. */
+/** Every type is listed above; anything unexpected gets Flight blue and a plain ticket icon. */
 export function ticketType(kind: Kind): TicketType {
   const label = (KINDS.find((k) => k.id === kind)?.label ?? 'Ticket').toUpperCase();
   return { label, ...(STYLES[kind] ?? { color: FLIGHT, icon: 'typeTicket' }) };

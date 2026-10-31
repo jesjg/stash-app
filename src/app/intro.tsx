@@ -295,7 +295,7 @@ export default function Intro() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.ground },
   bar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, minHeight: 44 },
-  brand: { ...font.display, fontSize: 21, textTransform: 'uppercase', color: colors.ink },
+  brand: { ...font.display, fontSize: 26, letterSpacing: -0.8, color: colors.ink },
   skip: { ...font.bodyMedium, fontSize: 16, color: colors.inkSoft },
   slide: { flexGrow: 1, paddingHorizontal: 24 },
   artArea: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', minHeight: 240, paddingVertical: 12 },

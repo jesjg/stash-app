@@ -175,6 +175,30 @@ for (const split of [false, true]) {
   }
 }
 
+// Ryanair app boarding pass (real text from "Send what Stash read"): "Depart" label, "Front Door" under
+// Boarding, and a name cut short in the barcode ("JONESGARDNER/JESDANI") and wrapped in the text.
+{
+  const text = ['1:54 -\t104)', 'Boarding Passes', 'NON-PRIORITY', 'RYANAIR\t10KG CHECK-IN BAG', 'Passenger\tSeat', 'Jes Daniel Anthony\t14E', 'Jonesgardner',
+    'Reference', 'KT1PKY', 'Queue', 'Non-Priority', 'Boarding', 'Front Door', 'Sequence', '111', 'Add to', 'Apple Wallet', 'Pescara\tMalta', 'PSR\tFR 1406\tMLA',
+    'Gate Closes\tDepart', '20 Jun - 19:40\t20 Jun - 20:10', 'CBAG - 10kg Check-in Bag', 'Drop 10kg bag off at the check-in desk'].join('\n');
+  const pass = 'M1' + 'JONESGARDNER/JESDANI' + 'E' + 'KT1PKY ' + 'PSRMLA' + 'FR ' + '1406 ' + '171' + 'Y' + '014E' + '0111 ' + '100';
+  const got = extractDetails([{ text, codes: 1, payloads: [pass] }], 1, today);
+  const value = (label: string, list = got.shared) => list.find((d) => d.label === label)?.value;
+  const check: [string, unknown, unknown][] = [
+    ['time', got.time, '20:10'],
+    ['gate closes', value('Gate closes'), '19:40'],
+    ['door', value('Door'), 'Front'],
+    ['passenger', value('Passenger', got.perTicket[0]), 'Jes Daniel Anthony Jonesgardner'],
+    ['company', value('Company'), 'Ryanair'],
+  ];
+  for (const [field, g, w] of check) {
+    if (g !== w) {
+      bad++;
+      console.log(`✗ Ryanair boarding pass: ${field} was ${JSON.stringify(g)}, wanted ${JSON.stringify(w)}`);
+    }
+  }
+}
+
 // Words in sentences that aren't details: "entry remains…", "class includes…".
 const noDetails: [string, string, string][] = [
   ['Indonesia e-VOA disclaimer', 'Issuance of e-VOA does not guarantee entry to the Republic of Indonesia, the decision of entry remains the right of the Immigration Officer', 'Entrance'],
@@ -214,5 +238,5 @@ for (const [want, text] of kinds) {
     console.log(`✗ kind: ${JSON.stringify(text.split('\n')[0])} was ${got}, wanted ${want}`);
   }
 }
-console.log(bad ? `${bad} wrong` : `All ${cases.length + 6 + noDetails.length + kept.length + kinds.length} tickets read right`);
+console.log(bad ? `${bad} wrong` : `All ${cases.length + 7 + noDetails.length + kept.length + kinds.length} tickets read right`);
 process.exit(bad ? 1 : 0);

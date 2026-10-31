@@ -48,7 +48,7 @@ const LABELS: LabelDef[] = [
   { label: 'Flight', words: ['flight', 'flight no', 'flight number', 'flug', 'volo', 'vuelo', 'vol'], value: /^[A-Z0-9]{2,3}\s?\d{1,4}[A-Z]?$/i },
   {
     label: 'Ref',
-    words: ['booking reference', 'booking ref', 'booking no', 'no. booking', 'booking number', 'booking code', 'reference', 'ref', 'order', 'order no', 'order number', 'confirmation', 'confirmation code', 'pnr', 'reservation', 'reservation no', 'ticket no', 'ticket number', 'visa number', 'visa no', 'application number', 'application no', 'permit number', 'authorisation number', 'authorization number', 'buchungsnummer', 'κωδικός κράτησης'],
+    words: ['booking reference', 'booking ref', 'booking no', 'no. booking', 'booking number', 'voucher no', 'voucher number', 'voucher code', 'levy voucher no', 'booking code', 'reference', 'ref', 'order', 'order no', 'order number', 'confirmation', 'confirmation code', 'pnr', 'reservation', 'reservation no', 'ticket no', 'ticket number', 'visa number', 'visa no', 'application number', 'application no', 'permit number', 'authorisation number', 'authorization number', 'buchungsnummer', 'κωδικός κράτησης'],
     value: REF,
   },
 ];
@@ -149,6 +149,11 @@ function cleanValue(def: LabelDef, raw: string): string | null {
   return token;
 }
 
+/** A heading for someone's name: "Name", "Full name", "Name (Same as Passport)", "Passenger name". */
+const NAME_HEAD = /^(?:full\s+)?(?:name|passenger(?:\s+name)?|guest(?:\s+name)?|holder)(?:\s*\([^)]*\))?\s*:?$/i;
+/** Two to four words of letters: a person's name, as printed. */
+const PERSON = /^[\p{L}'.-]+(?:\s+[\p{L}'.-]+){1,3}$/u;
+
 /** All label/value pairs on a page, in reading order. */
 function findDetails(text: string): Detail[] {
   const out: Detail[] = [];
@@ -180,10 +185,11 @@ function findDetails(text: string): Detail[] {
     const labels = cells.map(labelAt);
 
     // Header row of labels with a row of values below: "SECTION  ROW  SEAT" / "112  F  14"
+    const isName = (c: string) => NAME_HEAD.test(c);
     const isHeading = (c: string, l: ReturnType<typeof labelAt>) =>
-      (l && !l.rest) || /^[A-Z][A-Z /&.-]{1,20}:?$/.test(c);
-    const labelCount = labels.filter((l) => l && !l.rest).length;
-    if (labels.length > 1 && labelCount >= 2 && cells.every((c, k) => isHeading(c, labels[k])) && i + 1 < lines.length) {
+      (l && !l.rest) || isName(c) || /^[A-Z][A-Z /&.-]{1,20}:?$/.test(c) || /^[A-Z][\p{Ll}]+(?: [\p{L}().]+){0,3}:?$/u.test(c);
+    const labelCount = labels.filter((l, k) => (l && !l.rest) || isName(cells[k])).length;
+    if (labels.length > 1 && labelCount >= 1 && cells.every((c, k) => isHeading(c, labels[k])) && i + 1 < lines.length) {
       let values = lines[i + 1].split(/\t|\s{2,}|\s\|\s/).map((c) => c.trim()).filter(Boolean);
       if (values.length !== labels.length) {
         // One OCR box for the whole row: "STALLS J 12", keeping "Dress Circle" together.
@@ -194,6 +200,8 @@ function findDetails(text: string): Detail[] {
       }
       if (values.length === labels.length) {
         labels.forEach((l, k) => {
+          // "Name (Same as Passport)" over "GABIJA DUBICKAITE"
+          if (isName(cells[k]) && PERSON.test(values[k])) out.push({ label: 'Passenger', value: titleCase(values[k]) });
           if (!l || l.rest) return;
           const v = cleanValue(l.def, values[k]);
           if (v) out.push({ label: l.def.label, value: v });
@@ -273,7 +281,7 @@ const MONTHS: Record<string, number> = {
 const MONTH_RE = Object.keys(MONTHS).sort((a, b) => b.length - a.length).join('|');
 
 const GOOD_CONTEXT = /\b(date|event|departure|depart|departs|travel|journey|valid|show|performance|match|kick.?off|doors|start|on|sailing|outbound|arrival|datum|data|fecha|ημερομηνία)\b/i;
-const BAD_CONTEXT = /\b(issued|purchased|purchase|bought|order(ed)?\s*date|booking\s*date|booked|printed|created|transaction|invoice|payment|paid|generated|expires|expiry|dob|birth)\b/i;
+const BAD_CONTEXT = /\b(date\s+of\s+issue|issue\s+date|(?:must\s+be\s+)?used\s+before|use\s+before|date\s*stamp|time\s*stamp|timestamp|issued|purchased|purchase|bought|order(ed)?\s*date|booking\s*date|booked|printed|created|transaction|invoice|payment|paid|generated|expires|expiry|dob|birth)\b/i;
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -401,7 +409,7 @@ const CLUES: [Kind, number, RegExp][] = [
   ['train', 3, /\b(train|rail|railway|railcard|off-?peak|super off-?peak|anytime (day )?(single|return)|advance single|any permitted|route:? any|valid (on|until)|platform|carriage|coach [a-z]\b|seat reservation|station|bahn|trenitalia|eurostar|e-?ticket for travel)\b/gi],
   ['train', 1, /\b(single|return|outward|inbound|depart(s|ure)?|arriv(e|es|al)|reservation)\b/gi],
   ['bus', 3, /\b(bus|coach station|ktel|flixbus|national express|megabus)\b/gi],
-  ['visa', 3, /\b(e-?visa|visa|esta|electronic travel authori[sz]ation|entry permit)\b/gi],
+  ['visa', 3, /\b(e-?visa|visa|e-?voa|esta|electronic travel authori[sz]ation|entry permit|passport|immigration|levy|tourist tax|arrival card)\b/gi],
   ['car', 3, /\b(car hire|car rental|rental agreement|pick-?up location|hertz|avis|europcar|sixt|enterprise rent|parking)\b/gi],
   ['medical', 3, /\b(appointment|clinic|hospital|vaccination|vaccine|pharmacy|gp|dentist|medical)\b/gi],
   ['event', 3, /\b(theatre|theater|musical|matinee|stalls|dress circle|royal circle|grand circle|upper circle|west end|broadway|performance|ballet|opera|comedy)\b/gi],
@@ -695,6 +703,28 @@ const PER_TICKET = new Set([...LABELS.filter((l) => l.perTicket).map((l) => l.la
  * @param pages each page's text and how many codes were found on it, in order
  * @param ticketCount total tickets the importer created
  */
+/** Travel documents say what they are: "Bali Tourist Levy", "Indonesia Visa on Arrival". */
+function documentTitle(text: string): string | undefined {
+  const doc = /levy\s+voucher|tourist\s+levy|tourism\s+levy/i.test(text)
+    ? 'Tourist Levy'
+    : /\be-?voa\b|visa\s+on\s+arrival/i.test(text)
+      ? 'Visa on Arrival'
+      : /\be-?visa\b/i.test(text)
+        ? 'e-Visa'
+        : /\besta\b/i.test(text)
+          ? 'ESTA'
+          : /electronic\s+travel\s+authori[sz]ation/i.test(text)
+            ? 'ETA'
+            : undefined;
+  if (!doc) return undefined;
+  // Where it's for: "Bali Provincial Government", "Republic of Indonesia", "Indonesia Immigration".
+  const place =
+    text.match(/\b([A-Z][a-z]+)\s+Provincial\s+Government\b/)?.[1] ??
+    text.match(/\bRepublic\s+of\s+([A-Z][a-z]+)\b/)?.[1] ??
+    text.match(/\b([A-Z][a-z]+)\s+Immigration\b/)?.[1];
+  return place ? `${place} ${doc}` : doc;
+}
+
 export function extractDetails(pages: PageText[], ticketCount: number, today = new Date()): Extracted {
   const allText = pages.map((p) => p.text).join('\n');
   const lines = allText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
@@ -772,7 +802,9 @@ export function extractDetails(pages: PageText[], ticketCount: number, today = n
   const route = findRoute(lines) ?? (bp ? `${bp.from} → ${bp.to}` : undefined);
   const firstPage = (pages[0]?.text ?? '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const travel = kind === 'ferry' || kind === 'train' || kind === 'bus' || kind === 'flight';
-  const title = travel ? route ?? findEventTitle(firstPage, today) : findEventTitle(firstPage, today) ?? route;
+  const title =
+    (kind === 'visa' ? documentTitle(allText) : undefined) ??
+    (travel ? route ?? findEventTitle(firstPage, today) : findEventTitle(firstPage, today) ?? route);
   return {
     date: best?.date ?? bp?.date,
     time: startTime,

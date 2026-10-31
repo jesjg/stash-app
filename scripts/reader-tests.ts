@@ -79,6 +79,34 @@ for (const split of [false, true]) {
   }
 }
 
+// Bali tourist levy voucher (screenshot from the browser, opened from Gmail): two-column layout,
+// a purchase "Date stamp" with a time that isn't the visit's.
+{
+  const levy = [
+    '5:56', '◀ Gmail\t61', 'i.baliprov.go.id', 'Bali Provincial Government', 'lovebali.baliprov.go.id',
+    "Protect Bali's Paradise: Your Contribution Matters", 'Levy Voucher No.\tPassport Number', 'LVB26IUKFEA\t26****334',
+    'Name (Same as Passport)\tEmail', 'GABIJA DUBICKAITE\tje****99@gm****om', 'IDR IDR 150,000', '*Non-Refundable',
+    'Service fees IDR IDR 4,500', 'For Only Debit / Credit Card', 'Arrival date plan 09 November 2026',
+    'Date stamp 19 Sep 2026 06:53 (GMT+8)', 'Please bring this levy voucher with you during your stay in Bali.',
+  ].join('\n');
+  const got = extractDetails([{ text: levy, codes: 1 }], 1, today);
+  const value = (label: string, list = got.shared) => list.find((d) => d.label === label)?.value;
+  const check: [string, unknown, unknown][] = [
+    ['title', got.title, 'Bali Tourist Levy'],
+    ['kind', got.kind, 'visa'],
+    ['date', got.date, '2026-11-09'],
+    ['time', got.time ?? null, null],
+    ['ref', value('Ref'), 'LVB26IUKFEA'],
+    ['passenger', value('Passenger', got.perTicket[0]), 'Gabija Dubickaite'],
+  ];
+  for (const [field, g, w] of check) {
+    if (g !== w) {
+      bad++;
+      console.log(`✗ Bali levy voucher: ${field} was ${JSON.stringify(g)}, wanted ${JSON.stringify(w)}`);
+    }
+  }
+}
+
 // Words in sentences that aren't details: "entry remains…", "class includes…".
 const noDetails: [string, string, string][] = [
   ['Indonesia e-VOA disclaimer', 'Issuance of e-VOA does not guarantee entry to the Republic of Indonesia, the decision of entry remains the right of the Immigration Officer', 'Entrance'],
@@ -118,5 +146,5 @@ for (const [want, text] of kinds) {
     console.log(`✗ kind: ${JSON.stringify(text.split('\n')[0])} was ${got}, wanted ${want}`);
   }
 }
-console.log(bad ? `${bad} wrong` : `All ${cases.length + 2 + noDetails.length + kept.length + kinds.length} tickets read right`);
+console.log(bad ? `${bad} wrong` : `All ${cases.length + 3 + noDetails.length + kept.length + kinds.length} tickets read right`);
 process.exit(bad ? 1 : 0);

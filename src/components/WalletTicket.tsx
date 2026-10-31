@@ -33,8 +33,10 @@ type Props = {
   onPress?: () => void;
   /** Replaces the code (the tappable code on the ticket screen). */
   code?: ReactNode;
-  /** 0 → 1 drops the ticket away (used when archiving). */
+  /** 0 → 1 tears the ticket along the perforation when it's marked as used. */
   tear?: Animated.Value;
+  /** Split the card in two for the tear (set just before `tear` starts moving). */
+  tearing?: boolean;
 };
 
 /** Size to give CodeView so the code and its white margin fill a `box`-sized square. */
@@ -157,7 +159,7 @@ function HeaderFoil({ w, shape, height }: { w: number; shape: string; height: nu
 }
 
 /** The ticket card: type-coloured header, perforation, white body with the code and details. */
-export function WalletTicket({ stub, index = 0, compact, onPress, code, tear }: Props) {
+export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, tearing }: Props) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [headH, setHeadH] = useState(0);
   const holoAll = useStore((s) => s.settings.holoAll);
@@ -315,29 +317,44 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear }: 
     card
   );
 
-  const lift = styles.lift;
-  if (!tear) return <View style={lift}>{body}</View>;
+  if (!tear || !tearing || !drawn) return <View style={styles.lift}>{body}</View>;
+  // Torn along the dashed line: the card is drawn twice, each copy clipped to one side of the cut.
+  // The coloured stub tugs, then tears away and falls off; the rest settles back.
   return (
-    <Animated.View
-      style={[
-        lift,
-        {
-          opacity: tear.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] }),
-          transform: [
-            { translateY: tear.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 6, 520] }) },
-            { rotate: tear.interpolate({ inputRange: [0, 0.15, 1], outputRange: ['0deg', '-1deg', '10deg'] }) },
-          ],
-        },
-      ]}
-    >
-      {body}
-    </Animated.View>
+    <View style={{ height: size.h }}>
+      <Animated.View
+        style={[
+          styles.piece,
+          { top: py, height: size.h - py },
+          { transform: [{ translateY: tear.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 6, 0] }) }] },
+        ]}
+      >
+        <View style={{ marginTop: -py }}>{card}</View>
+      </Animated.View>
+      <Animated.View
+        style={[
+          styles.piece,
+          { top: 0, height: py },
+          {
+            opacity: tear.interpolate({ inputRange: [0, 0.8, 1], outputRange: [1, 1, 0] }),
+            transform: [
+              { translateX: tear.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, -3, -90] }) },
+              { translateY: tear.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, -10, -280] }) },
+              { rotate: tear.interpolate({ inputRange: [0, 0.2, 1], outputRange: ['0deg', '-3deg', '-22deg'] }) },
+            ],
+          },
+        ]}
+      >
+        {card}
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   // No background here, so iOS draws the shadow from the card's drawn shape, notches and all.
   lift: { shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 12 } },
+  piece: { position: 'absolute', left: 0, right: 0, overflow: 'hidden' },
   card: {},
   cardPlain: { backgroundColor: WHITE, overflow: 'hidden' },
   head: { overflow: 'hidden' },

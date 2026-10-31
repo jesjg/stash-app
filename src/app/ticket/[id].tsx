@@ -68,6 +68,8 @@ export default function TicketScreen() {
   const positioned = useRef(false);
   const [tear] = useState(() => new Animated.Value(0));
   const tearing = useRef(false);
+  // Which page is being torn (it splits in two for the animation).
+  const [tearingAt, setTearingAt] = useState<number | null>(null);
   useKeepAwake();
   useMaxBrightness(stub?.kind !== 'stay');
 
@@ -166,11 +168,14 @@ export default function TicketScreen() {
     if (used && stub.kind !== 'stay' && !tearing.current) {
       // Tear the stub off along the dotted line, then file it in Archive.
       tearing.current = true;
+      setTearingAt(at);
+      // Let the split card draw before it starts moving.
+      await new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done())));
       haptic('tear');
       await new Promise<void>((done) =>
         Animated.timing(tear, {
           toValue: 1,
-          duration: 700,
+          duration: 900,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }).start(() => done()),
@@ -315,7 +320,7 @@ export default function TicketScreen() {
               </View>
             ) : (
               <View style={styles.pageBody}>
-                <TicketCard stub={p.stub} index={p.index} tear={i === at ? tear : undefined}>
+                <TicketCard stub={p.stub} index={p.index} tear={i === at ? tear : undefined} tearing={tearingAt === i}>
                   {p.stub.tickets[p.index] ? (
                     <Pressable
                       accessibilityRole="button"
@@ -348,8 +353,20 @@ export default function TicketScreen() {
   );
 }
 
-function TicketCard({ stub, index, children, tear }: { stub: Stub; index: number; children: React.ReactNode; tear?: Animated.Value }) {
-  return <WalletTicket stub={stub} index={index} tear={tear} code={children ?? undefined} />;
+function TicketCard({
+  stub,
+  index,
+  children,
+  tear,
+  tearing,
+}: {
+  stub: Stub;
+  index: number;
+  children: React.ReactNode;
+  tear?: Animated.Value;
+  tearing?: boolean;
+}) {
+  return <WalletTicket stub={stub} index={index} tear={tear} tearing={tearing} code={children ?? undefined} />;
 }
 
 const styles = StyleSheet.create({

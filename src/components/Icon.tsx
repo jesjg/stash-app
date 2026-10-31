@@ -21,6 +21,8 @@ const paths = {
   car: 'M3 13l2-5h14l2 5v4H3zM7 17v2.5M17 17v2.5M3 13h18',
   suitcase: 'M4 8h16v12H4zM9 8V5h6v3M4 13h16',
   archive: 'M3 5h18v4H3zM5 9v10h14V9M10 13h4',
+  check: 'M5 12.5l4.5 4.5L19 7',
+  zoomIn: 'M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16z M21 21l-4.35-4.35 M11 8v6 M8 11h6',
   pencil: 'M21.17 6.81a2.83 2.83 0 0 0-4-4L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z M15 5l4 4',
   // Ticket types (see lib/ticketTypes.ts).
   typePlane:

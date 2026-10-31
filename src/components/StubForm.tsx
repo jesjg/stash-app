@@ -20,6 +20,7 @@ import { KINDS, type Kind, type Stay, type Stub } from '../lib/types';
 import { colors, font, label } from '../theme';
 import { CodeView } from './CodeView';
 import { Icon } from './Icon';
+import { ticketType } from '../lib/ticketTypes';
 
 export type StubFields = Pick<Stub, 'title' | 'kind' | 'date' | 'time' | 'stay' | 'details'>;
 
@@ -49,10 +50,14 @@ function reminderText(date: string, time?: string) {
 }
 
 /** A pencil beside text you can change; tapping it puts the cursor in the box. */
+// New ticket spec: white screen, light grey groups.
+const SCREEN = '#FFFFFF';
+const SOFT_BG = '#F7F7F7';
+
 function EditButton({ label: a11y, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={a11y} onPress={onPress} hitSlop={10} style={styles.pencil}>
-      <Icon name="pencil" size={18} color={colors.inkSoft} stroke={2} />
+      <Icon name="pencil" size={14} color={colors.inkSoft} stroke={2} />
     </Pressable>
   );
 }
@@ -84,7 +89,6 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
         : 'No code found, keeping the page';
   // Show the whole ticket while checking the details (the code alone hides them); tap to zoom.
   const page = stub.pageUris.find(Boolean) ?? first?.pageUri;
-  const [pageAspect, setPageAspect] = useState(0.71);
   // Shared details plus the first ticket's own (seat etc.); with several tickets, note that seats vary.
   const readDetails = [...(first?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company');
   // The company is its own field: it becomes the name badge on the ticket.
@@ -94,6 +98,11 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
     return name ? [{ label: 'Company', value: name.slice(0, 40) }, ...rest] : rest.length ? rest : undefined;
   };
   const filled = stub.autofill ?? [];
+  const found = !!first?.code || isStay;
+  const pages = stub.pageUris.length;
+  const source = isStay
+    ? 'Read from your screenshots'
+    : `Read from your ${/\.pdf$/i.test(stub.sourceName) ? 'PDF' : 'screenshot'}${pages > 1 ? ` · ${pages} pages` : ''}`;
 
   const onDate = (_: DateTimePickerEvent, d?: Date) => d && setDate(dayKey(d));
   const onTime = (_: DateTimePickerEvent, d?: Date) => d && setTime(timeKey(d));
@@ -117,10 +126,37 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]} keyboardShouldPersistTaps="handled">
-        {/* Everything you can change comes first; the ticket itself is at the bottom to check against. */}
-        <View style={styles.box}>
-          <View style={styles.inputRow}>
-            <Text style={styles.inputLabel}>Name</Text>
+        {/* The ticket at a glance: a small picture to tap and enlarge, what was found, and its name. */}
+        <View style={[styles.box, styles.hero]}>
+          {page ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Your ticket. Tap to enlarge it and check the details."
+              onPress={() => router.push({ pathname: '/original/[id]', params: { id: stub.id } })}
+              style={({ pressed }) => [styles.thumbWrap, pressed && { opacity: 0.8 }]}
+            >
+              <View style={styles.thumb}>
+                <Image source={{ uri: page }} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="top" />
+                <View style={styles.zoomBadge}>
+                  <Icon name="zoomIn" size={14} color="#FFFFFF" stroke={2.4} />
+                </View>
+              </View>
+              <Text style={styles.thumbHint}>Tap to enlarge</Text>
+            </Pressable>
+          ) : first?.code ? (
+            <View style={[styles.thumb, styles.thumbCode]}>
+              <CodeView ticket={first} size={56} />
+            </View>
+          ) : null}
+          <View style={styles.grow}>
+            <View style={styles.statusRow}>
+              <View style={[styles.statusDot, { backgroundColor: found ? '#00C566' : '#A8A8A0' }]}>
+                <Icon name={found ? 'check' : 'doc'} size={11} color="#FFFFFF" stroke={3} />
+              </View>
+              <Text style={styles.statusText} numberOfLines={1}>
+                {status}
+              </Text>
+            </View>
             <View style={styles.editRow}>
               <TextInput
                 ref={titleRef}
@@ -138,8 +174,10 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
               />
               <EditButton label="Edit name" onPress={() => titleRef.current?.focus()} />
             </View>
+            <Text style={styles.heroSub}>{source}</Text>
           </View>
         </View>
+        {page ? <Text style={styles.reminder}>Something not right? Tap the ticket to enlarge it and check the details.</Text> : null}
         {!isStay && (
           <View style={styles.box}>
             <View style={styles.inputRow}>
@@ -176,6 +214,7 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
                   onPress={() => setKind(k.id)}
                   style={[styles.chip, on && styles.chipOn]}
                 >
+                  <View style={[styles.chipDot, { backgroundColor: on ? '#FFFFFF' : ticketType(k.id).color }]} />
                   <Text style={[styles.chipText, on && styles.chipTextOn]}>{k.label}</Text>
                 </Pressable>
               );
@@ -226,14 +265,12 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
             </>
           )}
         </View>
-        <Text style={styles.reminder}>{reminderText(date, time)}</Text>
-
-        {(filled.includes('date') || filled.includes('time')) && (
-          <Text style={styles.reminder}>
-            {filled.includes('date') && filled.includes('time') ? 'Date and time' : filled.includes('date') ? 'Date' : 'Time'}{' '}
-            read from the ticket. Check they&apos;re right.
-          </Text>
-        )}
+        <Text style={styles.reminder}>
+          {reminderText(date, time)}
+          {filled.includes('date') || filled.includes('time')
+            ? ` ${filled.includes('date') && filled.includes('time') ? 'Date and time' : filled.includes('date') ? 'Date' : 'Time'} read from the ticket.`
+            : ''}
+        </Text>
         {isStay && (
           <>
             <View style={styles.box}>
@@ -341,27 +378,6 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
           </View>
         )}
 
-        <View style={styles.field}>
-          <Text style={label}>{status}</Text>
-          {isStay && !page ? null : page ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Your ticket. Opens it full screen to zoom."
-              onPress={() => router.push({ pathname: '/original/[id]', params: { id: stub.id } })}
-              style={({ pressed }) => [styles.cardBottom, pressed && { opacity: 0.85 }]}
-            >
-              <Image
-                source={{ uri: page }}
-                style={[styles.page, { aspectRatio: pageAspect }]}
-                contentFit="contain"
-                onLoad={(e) => e.source.width && e.source.height && setPageAspect(e.source.width / e.source.height)}
-              />
-              <Text style={styles.pageHint}>{stub.pageUris.length > 1 ? `Tap to zoom · ${stub.pageUris.length} pages` : 'Tap to zoom'}</Text>
-            </Pressable>
-          ) : (
-            <View style={styles.cardBottom}>{first && <CodeView ticket={first} size={150} />}</View>
-          )}
-        </View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
@@ -378,45 +394,48 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.ground },
+  screen: { flex: 1, backgroundColor: SCREEN },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   topBtn: { minWidth: 64, minHeight: 44, justifyContent: 'center' },
   cancel: { ...font.bodyMedium, fontSize: 16, color: colors.ink },
-  heading: { ...font.monoBold, fontSize: 13, letterSpacing: 1.6, textTransform: 'uppercase', color: colors.ink },
-  content: { paddingHorizontal: 20, paddingTop: 8, gap: 22 },
-  titleInput: {
-    ...font.display,
-    fontSize: 22,
-    color: colors.ink,
-    padding: 0,
-    minHeight: 44,
-  },
-  cardBottom: { padding: 14, alignItems: 'center', backgroundColor: colors.paper, borderRadius: 14 },
+  heading: { fontSize: 15, fontWeight: '700', letterSpacing: 2.4, textTransform: 'uppercase', color: colors.ink },
+  content: { paddingHorizontal: 20, paddingTop: 8, gap: 18 },
+  titleInput: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4, color: colors.ink, padding: 0 },
   editRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   grow: { flex: 1 },
-  pencil: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.ground, alignItems: 'center', justifyContent: 'center' },
-  page: { width: '100%', maxHeight: 460, borderRadius: 8, backgroundColor: colors.paper },
-  pageHint: { ...font.mono, fontSize: 11, color: colors.inkFaint, paddingTop: 10 },
+  pencil: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#EBEBEB', alignItems: 'center', justifyContent: 'center' },
+  // The top card: a small picture of the ticket to tap and enlarge, what was found and the name.
+  hero: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 16 },
+  thumbWrap: { alignItems: 'center', gap: 6 },
+  thumb: { width: 72, height: 112, borderRadius: 12, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E2E2', overflow: 'hidden' },
+  thumbCode: { alignItems: 'center', justifyContent: 'center' },
+  zoomBadge: { position: 'absolute', right: 5, bottom: 5, width: 26, height: 26, borderRadius: 13, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  thumbHint: { fontSize: 11, fontWeight: '600', color: colors.accent },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 4 },
+  statusDot: { width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  statusText: { flexShrink: 1, fontSize: 13, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkSoft },
+  heroSub: { fontSize: 14, fontWeight: '500', color: '#666666', marginTop: 2 },
   field: { gap: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { borderWidth: 1.5, borderColor: colors.ink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1.5, borderColor: '#E2E2E2', backgroundColor: SCREEN, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
+  chipDot: { width: 9, height: 9, borderRadius: 5 },
   chipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   chipText: { ...font.bodyBold, fontSize: 14, color: colors.ink },
   chipTextOn: { color: colors.onAccent },
-  box: { backgroundColor: colors.paper, borderRadius: 14, paddingHorizontal: 16 },
+  box: { backgroundColor: SOFT_BG, borderRadius: 20, paddingHorizontal: 16 },
   boxRow: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   boxLabel: { ...font.bodyBold, fontSize: 16, color: colors.ink },
-  divider: { height: 1, backgroundColor: '#E6E6E0' },
-  valueBtn: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: colors.ground, borderRadius: 8 },
+  divider: { height: 1, backgroundColor: '#E6E6E6' },
+  valueBtn: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#EBEBEB', borderRadius: 10 },
   value: { ...font.mono, fontSize: 15, color: colors.ink },
-  detail: { backgroundColor: colors.paper, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, gap: 2 },
+  detail: { backgroundColor: SOFT_BG, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, gap: 2 },
   detailLabel: { ...font.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkFaint },
   detailValue: { ...font.bodyBold, fontSize: 15, color: colors.ink },
   inputRow: { paddingVertical: 12, gap: 4 },
   inputLabel: { ...font.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkFaint },
   input: { ...font.bodyBold, fontSize: 16, color: colors.ink, padding: 0, minHeight: 24 },
   reminder: { ...font.mono, fontSize: 12, color: colors.inkSoft, marginTop: -10 },
-  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: colors.ground },
+  footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: SCREEN },
   save: { height: 56, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   saveText: { ...font.bodyBold, fontSize: 17, color: colors.onAccent },
 });

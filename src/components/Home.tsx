@@ -4,7 +4,6 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, useW
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from './Icon';
-import { companyOf } from './CompanyMark';
 import { Logo } from './Logo';
 import { NotifyPrompt } from './NotifyPrompt';
 import { Perforated } from './Perforated';
@@ -13,21 +12,13 @@ import { ticketType } from '../lib/ticketTypes';
 import { ScreenshotCards } from './ScreenshotCards';
 import { RoundButton } from './RoundButton';
 import { showToast } from './Toast';
-import { dayKey, daysBetween, fmt, relativeDay } from '../lib/dates';
+import { dayKey, daysBetween, fmt } from '../lib/dates';
 import { addSampleTicket, clearPast, groupStubs, removeStub, setUsed, useStore } from '../lib/store';
 import { KINDS, type Stub } from '../lib/types';
 import { useAddTicket } from '../lib/useAddTicket';
 import { colors, font, label } from '../theme';
 
 const kindLabel = (s: Stub) => KINDS.find((k) => k.id === s.kind)?.label ?? 'Ticket';
-const ticketCount = (s: Stub) =>
-  s.kind === 'stay'
-    ? s.stay?.checkOutDate
-      ? `Until ${fmt.short(s.stay.checkOutDate)}`
-      : ''
-    : s.tickets.length > 1
-      ? `${s.tickets.length} tickets`
-      : '1 ticket';
 const NEXT_COUNT = 5;
 const CARD_GAP = 12;
 // Home screen spec: white screen, light grey rows, black text, violet add button.
@@ -160,7 +151,7 @@ export function Home() {
           <View style={styles.section}>
             <View style={styles.rowBetween}>
               <Text style={styles.sectionLabel}>Coming up</Text>
-              <Text style={styles.hint}>Swipe left to archive</Text>
+              <Text style={styles.hint}>{`${comingUp.length} ticket${comingUp.length === 1 ? '' : 's'}`}</Text>
             </View>
             {comingUp.map((s) => (
               <SwipeRow key={s.id} stub={s} action="archive">
@@ -270,27 +261,25 @@ function NextCard({ stub, active }: { stub: Stub; active: boolean }) {
 }
 
 /** "Today", "Tomorrow" or "In 12 days" (never the date, which the row shows next to it). */
-function daysToGo(day: string) {
-  const n = daysBetween(dayKey(), day);
-  return n <= 0 ? 'Today' : n === 1 ? 'Tomorrow' : `In ${n} days`;
-}
-
+/** A row filled with the ticket type's colour, with a tear-off stub counting the days (or the date, once past). */
 function StubRow({ stub, faded, countdown }: { stub: Stub; faded?: boolean; countdown?: boolean }) {
   const type = ticketType(stub.kind);
-  const meta = countdown
-    ? [daysToGo(stub.date), fmt.short(stub.date), stub.time, kindLabel(stub), stub.tickets.length > 1 ? ticketCount(stub) : ''].filter(Boolean).join(' · ')
-    : [fmt.short(stub.date), companyOf(stub) ?? kindLabel(stub), stub.time, stub.kind === 'stay' ? ticketCount(stub) || relativeDay(stub.date) : stub.tickets.length > 1 ? ticketCount(stub) : relativeDay(stub.date)]
-        .filter(Boolean)
-        .join(' · ');
+  const days = daysBetween(dayKey(), stub.date);
+  const [big, small] = countdown
+    ? days <= 0
+      ? ['0', 'TODAY']
+      : [String(days), days === 1 ? 'DAY' : 'DAYS']
+    : [String(Number(fmt.dayNum(stub.date))), fmt.mon(stub.date).toUpperCase()];
+  const meta = [kindLabel(stub), fmt.short(stub.date)].join(' · ');
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${stub.title}, ${fmt.long(stub.date)}`}
+      accessibilityLabel={`${stub.title}, ${kindLabel(stub)}, ${fmt.long(stub.date)}${countdown ? `, ${days <= 0 ? 'today' : `in ${days} day${days === 1 ? '' : 's'}`}` : ''}`}
       onPress={() => openStub(stub.id)}
-      style={({ pressed }) => [styles.row, faded && { opacity: 0.6 }, pressed && { opacity: 0.8 }]}
+      style={({ pressed }) => [styles.row, { backgroundColor: type.color }, faded && { opacity: 0.55 }, pressed && { opacity: 0.85 }]}
     >
-      <View style={[styles.rowBadge, { backgroundColor: type.color }]} accessibilityLabel={type.label}>
-        <Icon name={type.icon} size={20} color="#FFFFFF" stroke={2} />
+      <View style={styles.rowBadge}>
+        <Icon name={type.icon} size={20} color={type.color} stroke={2} />
       </View>
       <View style={styles.rowBody}>
         <Text style={styles.rowTitle} numberOfLines={1}>
@@ -299,6 +288,11 @@ function StubRow({ stub, faded, countdown }: { stub: Stub; faded?: boolean; coun
         <Text style={styles.rowMeta} numberOfLines={1}>
           {meta}
         </Text>
+      </View>
+      <View style={styles.rowTear} />
+      <View style={styles.rowStub}>
+        <Text style={styles.rowDays}>{big}</Text>
+        <Text style={styles.rowDaysLabel}>{small}</Text>
       </View>
     </Pressable>
   );
@@ -387,11 +381,16 @@ const styles = StyleSheet.create({
   tile: { flexBasis: '47%', flexGrow: 1, backgroundColor: SOFT_BG, borderRadius: 20, padding: 14, gap: 10, minHeight: 92 },
   tileIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: SCREEN, alignItems: 'center', justifyContent: 'center' },
   tileText: { ...font.bodyBold, fontSize: 14, lineHeight: 18, color: colors.ink },
-  row: { backgroundColor: SOFT_BG, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, paddingHorizontal: 16 },
-  rowBadge: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  rowBody: { flex: 1, justifyContent: 'center', gap: 3 },
-  rowTitle: { fontSize: 16, fontWeight: '700', color: INK },
-  rowMeta: { fontSize: 13, fontWeight: '500', color: SOFT },
+  // Coming up rows: the type's colour, white text, a dashed tear and the countdown stub on the right.
+  row: { borderRadius: 20, flexDirection: 'row', alignItems: 'stretch', minHeight: 68, paddingLeft: 14 },
+  rowBadge: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  rowBody: { flex: 1, justifyContent: 'center', gap: 2, paddingHorizontal: 12, paddingVertical: 12 },
+  rowTitle: { fontSize: 17, fontWeight: '800', letterSpacing: -0.3, color: '#FFFFFF' },
+  rowMeta: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.9)' },
+  rowTear: { width: 0, borderLeftWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.6)' },
+  rowStub: { width: 64, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
+  rowDays: { fontSize: 22, lineHeight: 24, fontWeight: '800', color: '#FFFFFF', fontVariant: ['tabular-nums'] },
+  rowDaysLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: '#FFFFFF' },
   swipeAction: {
     width: 88,
     marginLeft: 10,

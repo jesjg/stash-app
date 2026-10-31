@@ -250,13 +250,15 @@ export function clearPast() {
 export async function applyReread(id: string, found: Extracted & { stayFound?: StayFound }): Promise<number> {
   const current = state.stubs.find((s) => s.id === id);
   if (!current) return 0;
-  const tickets = current.tickets.map((t, i) =>
-    found.perTicket[i]?.length ? { ...t, details: found.perTicket[i] } : t,
-  );
+  // What's read now replaces what was read before (old rules got some details wrong), but a
+  // company the person typed or corrected is kept.
+  const tickets = current.tickets.map((t, i) => ({ ...t, details: found.perTicket[i]?.length ? found.perTicket[i] : undefined }));
+  const company = current.details?.find((d) => d.label === 'Company');
+  const shared = found.shared.filter((d) => !company || d.label !== 'Company');
   const next: Stub = {
     ...current,
     tickets,
-    details: found.shared.length ? found.shared : current.details,
+    details: company ? [company, ...shared] : shared.length ? shared : undefined,
     kind: (current.kind === 'event' || current.kind === 'other') && found.kind ? found.kind : current.kind,
     time: current.time ?? found.time,
     title: found.title && /^(ticket|tickets|e-?tickets?|screenshot|image|photo)?$/i.test(current.title.trim()) ? found.title : current.title,

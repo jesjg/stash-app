@@ -22,9 +22,9 @@ import { Icon } from '../../components/Icon';
 import { fitCode, WalletTicket } from '../../components/WalletTicket';
 import { RoundButton } from '../../components/RoundButton';
 import { showToast } from '../../components/Toast';
-import { readStubText } from '../../lib/importer';
+import { readStubText, rereadStub } from '../../lib/importer';
 import { canSendAll, sendAll, sendTicket } from '../../lib/send';
-import { groupStubs, isArchived, isPast, removeStub, setUsed, useStore } from '../../lib/store';
+import { applyReread, groupStubs, isArchived, isPast, removeStub, setUsed, useStore } from '../../lib/store';
 import type { Stub } from '../../lib/types';
 import { haptic } from '../../lib/native';
 import { useMaxBrightness } from '../../lib/useMaxBrightness';
@@ -133,6 +133,16 @@ export default function TicketScreen() {
       ...(sample
         ? []
         : [
+            {
+              // Saved tickets keep what was read when they were added; this reads them with today's rules.
+              label: 'Read ticket again',
+              run: () => {
+                rereadStub(stub)
+                  .then((found) => applyReread(stub.id, found))
+                  .then(() => showToast('Read again: details updated'))
+                  .catch((e) => Alert.alert("Couldn't read the ticket", String(e?.message ?? e)));
+              },
+            },
             {
               label: 'Send what Stash read',
               run: () => {

@@ -80,7 +80,7 @@ function labelAt(cell: string): { def: LabelDef; rest: string } | null {
 }
 
 const STOP = new Set(
-  'the and via at of in on for to from by is are be this that your you with open opens opening closes closed fee fees number information details detail time date only please see free all any none here there per includes include included including remains remain must may will can not required requirements subject valid applies apply'.split(' '),
+  'the and via at of in on for to from by is are be this that your you with open opens opening closes closed fee fees number information details detail time date only please see free all any none here there per includes include included including remains remain must may will can not required requirements subject valid applies apply adult adults child children infant senior ticket tickets'.split(' '),
 );
 
 // Theatre and venue areas: "Stalls", "Dress Circle", "Grand Circle", "Upper Tier", "Box C".
@@ -240,8 +240,8 @@ function findDetails(text: string): Detail[] {
       // (or the one after, when a watermark like "ADULT TICKET" got read in between).
       if (!v && k === hits.length - 1 && !lines[i].slice(startV).trim()) {
         for (const next of [lines[i + 1], lines[i + 2]]) {
-          // Another label ("Location :") means this one was left blank.
-          if (!next || INLINE_RE_TEST.test(next) || /:\s*$/.test(next)) break;
+          // Another label ("Location :", "Trip : …") means this one was left blank.
+          if (!next || INLINE_RE_TEST.test(next) || /:\s*$/.test(next) || /^[\p{L}][\p{L} .-]{1,20}\s*:\s/u.test(next)) break;
           v = cleanValue(def, next);
           if (v) break;
         }
@@ -359,7 +359,7 @@ export function parseTime(s: string): string | null {
   return `${pad(h)}:${pad(min)}`;
 }
 
-const TIME_GOOD = /\b(depart|departure|departs|dep|start|starts|show|kick.?off|performance|time|sailing|abfahrt|partenza|salida|αναχώρηση)\b/i;
+const TIME_GOOD = /\b(depart|departure|departs|dep|start|starts|show|kick.?off|performance|time|trip|sailing|abfahrt|partenza|salida|αναχώρηση)\b/i;
 const TIME_DOORS = /\b(doors|gates open|einlass|check.?in|boarding)\b/i;
 
 /**
@@ -459,12 +459,16 @@ function findRoute(lines: string[]): string | undefined {
     return v.length >= 3 && v.length <= 30 && /^[\p{L}][\p{L} .'-]+$/u.test(v) ? v : undefined;
   };
   const UI = /^(add|share|save|view|go|back|open|apple|wallet|download|print|email|send|next|previous|close|options|ticket|route|adult|child|valid)\b/i;
-  const notPlace = (x: string) => UI.test(x.trim()) || INLINE_RE_TEST.test(x) || AREA_ANY.test(x);
+  const notPlace = (x: string) => UI.test(x.trim()) || INLINE_RE_TEST.test(x) || AREA_ANY.test(x) || /\.[a-z]{2,}\b|www|@/i.test(x);
   const ARROW = [
-    /^([\p{L} .'-]{3,30}?)\s*(?:→|->|>|⇒|=>)\s*([\p{L} .'-]{3,30})$/u,
-    /^([\p{L} .'-]{3,30}?)\s+(?:–|—|-|to)\s+([\p{L} .'-]{3,30})$/u,
+    // Places may carry a note in brackets: "Lembongan (Yellow Bridge) - Gili Trawangan".
+    /^([\p{L} .'()-]{3,40}?)\s*(?:→|->|>|⇒|=>)\s*([\p{L} .'()-]{3,40})$/u,
+    /^([\p{L} .'()-]{3,40}?)\s+(?:–|—|-|to)\s+([\p{L} .'()-]{3,40})$/u,
   ];
-  lines.forEach((l, i) => {
+  // A line labelled as the route ("Route : Bangsal - Padang Bai") beats any other line that looks like one.
+  const labelled = lines.findIndex((l) => /^(route|journey|trip|sailing)\s*:/i.test(l) && ARROW.some((re) => re.test(l.replace(/^[^:]*:\s*/, '').trim())));
+  const ordered = labelled >= 0 ? [lines[labelled], ...lines] : lines;
+  ordered.forEach((l, i) => {
     const f = l.match(/^(from|departure port|origin|von|da|desde|από)\b[:\s]*(.*)$/i);
     const t = l.match(/^(to|arrival port|destination|nach|a|hasta|προς)\b[:\s]*(.*)$/i);
     if (f && !from) from = place(f[2]) ?? place(lines[i + 1] ?? '');
@@ -478,7 +482,8 @@ function findRoute(lines: string[]): string | undefined {
         from = place(arrow[1]);
         to = place(arrow[2]);
         if (from && to) {
-          arrowLine = i;
+          // Back to the line's place in the ticket (the labelled route was put first).
+          arrowLine = labelled >= 0 ? (i === 0 ? labelled : i - 1) : i;
           return;
         }
         from = to = undefined;

@@ -71,14 +71,15 @@ enum TicketAI {
     }
     // The model's context is small: try most of the ticket first, then just the top of it.
     var lastError = "no answer"
-    for limit in [5000, 2500] {
+    for limit in [4000, 2000] {
       let session = LanguageModelSession(instructions: instructions)
       let prompt = "Today is \(today).\n\nTicket text:\n\(String(text.prefix(limit)))"
       do {
         let response = try await session.respond(
           to: prompt,
           generating: AITicket.self,
-          options: GenerationOptions(sampling: .greedy)
+          // A cap on the answer's length, so it can't run on repeating itself.
+          options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 500)
         )
         let t = response.content
         return [
@@ -91,6 +92,8 @@ enum TicketAI {
         ]
       } catch {
         lastError = String(describing: error)
+        // Only a ticket too long for the model is worth a second, shorter try.
+        if !lastError.lowercased().contains("context") { break }
       }
     }
     return ["error": lastError]

@@ -40,6 +40,8 @@ type Props = {
   tearing?: boolean;
   /** On screen: sparkles twinkle only on the card you're looking at. */
   active?: boolean;
+  /** Footer "Ticket 1 of 10": where this card is among the ones you can swipe through. */
+  position?: { at: number; of: number };
 };
 
 /** Size to give CodeView so the code and its white margin fill a `box`-sized square. */
@@ -128,7 +130,7 @@ function headerShape(w: number, radius: number, py: number, r: number) {
 }
 
 /** The ticket card: type-coloured header, perforation, white body with the code and details. */
-export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, tearing, active = true }: Props) {
+export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, tearing, active = true, position }: Props) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [headH, setHeadH] = useState(0);
   const sparkle = !!useStore((s) => s.settings.sparkles);
@@ -290,7 +292,7 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, te
                   <View key={c} style={[styles.footerDot, { backgroundColor: c }]} />
                 ))}
               </View>
-              <Text style={styles.footerCount}>{count > 1 ? `Ticket ${index + 1} of ${count}` : '1 ticket'}</Text>
+              <Text style={styles.footerCount}>{position ? `Ticket ${position.at} of ${position.of}` : `Ticket ${index + 1} of ${count}`}</Text>
             </View>
           </View>
         )}

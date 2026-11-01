@@ -51,6 +51,16 @@ public class StubsScannerModule: Module {
       return pages
     }
 
+    /// Apple Intelligence on this iPhone: available | notEnabled | notReady | notEligible | unavailable | unsupported
+    Function("aiStatus") { () -> String in
+      TicketAIBridge.status()
+    }
+
+    /// Reads a ticket's text with the on-device model. Resolves with { error } when it can't.
+    AsyncFunction("readTicketAsync") { (text: String, today: String) async -> [String: Any] in
+      await TicketAIBridge.read(text: text, today: today)
+    }
+
     /// Opens Apple's document camera (edge detection, straightening) for paper tickets.
     /// Resolves with the scanned pages as JPEG file URIs, or [] if the person cancels.
     AsyncFunction("scanPaperAsync") { (outDir: String, promise: Promise) in

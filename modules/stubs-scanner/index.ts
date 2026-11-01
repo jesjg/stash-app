@@ -19,10 +19,23 @@ export type ScannedPage = {
   codes: ScannedCode[];
 };
 
+/** What Apple's on-device model read off a ticket. Every field may be empty. */
+export type AIRead = {
+  kind?: string;
+  title?: string;
+  company?: string;
+  date?: string;
+  time?: string;
+  details?: { label: string; value: string }[];
+};
+
 type NativeScanner = {
   scanFileAsync(uri: string, outDir: string): Promise<ScannedPage[]>;
   /** Newer builds only: Apple's document camera for paper tickets. */
   scanPaperAsync?(outDir: string): Promise<string[]>;
+  /** 1.1 builds and later: Apple Intelligence, on the phone. */
+  aiStatus?(): string;
+  readTicketAsync?(text: string, today: string): Promise<AIRead & { error?: string }>;
 };
 
 // Optional so the JS still loads in Expo Go; scanning needs a development build.
@@ -44,4 +57,27 @@ export const isPaperScanAvailable = typeof native?.scanPaperAsync === 'function'
 export async function scanPaperAsync(outDir: string): Promise<string[]> {
   if (!native?.scanPaperAsync) throw new Error('Scanning paper tickets needs the latest Stash from TestFlight.');
   return native.scanPaperAsync(outDir);
+}
+
+/**
+ * Apple Intelligence on this iPhone: 'available', 'notEnabled' (turned off in Settings),
+ * 'notReady' (still downloading), 'notEligible' (older iPhone) or 'unsupported' (older iOS or build).
+ */
+export function aiStatus(): string {
+  try {
+    return native?.aiStatus?.() ?? 'unsupported';
+  } catch {
+    return 'unsupported';
+  }
+}
+
+/** Reads ticket text with Apple's on-device model. null when it isn't available or fails. */
+export async function readTicketWithAI(text: string, today: string): Promise<AIRead | null> {
+  if (!native?.readTicketAsync || aiStatus() !== 'available' || !text.trim()) return null;
+  try {
+    const r = await native.readTicketAsync(text, today);
+    return r.error ? null : r;
+  } catch {
+    return null;
+  }
 }

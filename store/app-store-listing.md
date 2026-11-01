@@ -53,6 +53,12 @@ Copy each part into App Store Connect → Apps → Stash. Character limits are A
 **Privacy Policy URL:** https://jesjg.github.io/stash-app/privacy/
 **Copyright:** 2026 [your full name]
 
+## Version 1.1.0
+
+**What's new** (4,000)
+
+> Smarter ticket reading. On iPhones with Apple Intelligence, Stash now uses it to read tricky tickets: better titles, and dates, times and booking references it used to miss. It all happens on your iPhone; nothing is sent anywhere. You can turn it off in Settings.
+
 ## App Privacy
 
 Choose **"Data Not Collected"**. Stash keeps everything on the phone and has no analytics.

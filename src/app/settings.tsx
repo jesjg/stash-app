@@ -5,6 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { AppState, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { aiStatus } from '../../modules/stubs-scanner';
 import { Icon } from '../components/Icon';
 import { RoundButton } from '../components/RoundButton';
 import { enableScreenshotCheck, screenshotsSupported } from '../lib/screenshots';
@@ -16,16 +17,24 @@ import { colors, font, label } from '../theme';
 export default function Settings() {
   const count = useStore((s) => s.stubs.length);
   const [reminders, setReminders] = useState<ReminderStatus | null>(null);
+  const [ai, setAI] = useState(aiStatus);
   useFocusEffect(
     useCallback(() => {
       reminderStatus().then(setReminders);
-      const sub = AppState.addEventListener('change', (st) => st === 'active' && reminderStatus().then(setReminders));
+      setAI(aiStatus());
+      const sub = AppState.addEventListener('change', (st) => {
+        if (st !== 'active') return;
+        reminderStatus().then(setReminders);
+        setAI(aiStatus());
+      });
       return () => sub.remove();
     }, []),
   );
   const lockScreen = useStore((s) => s.settings.lockScreen);
   const sparkles = useStore((s) => s.settings.sparkles);
   const shots = useStore((s) => s.settings.screenshots);
+  const smartReading = useStore((s) => s.settings.smartReading !== false);
+  const showAI = ai === 'available' || ai === 'notEnabled' || ai === 'notReady';
   const insets = useSafeAreaInsets();
 
   return (
@@ -47,6 +56,30 @@ export default function Settings() {
           <Toggle value={!!sparkles} onValueChange={(v) => setSettings({ sparkles: v })} accessibilityLabel="Sparkle tickets" />
         </View>
       </View>
+
+      {showAI && (
+        <View style={styles.block}>
+          <Text style={label}>Reading tickets</Text>
+          <View style={styles.row}>
+            <View style={{ flex: 1, gap: 2, paddingVertical: 10 }}>
+              <Text style={styles.rowText}>Apple Intelligence</Text>
+              <Text style={styles.note}>
+                {ai === 'notEnabled'
+                  ? 'Turn on Apple Intelligence in iPhone Settings to use this.'
+                  : ai === 'notReady'
+                    ? 'Apple Intelligence is still getting ready on this iPhone.'
+                    : 'Helps read tricky tickets. Runs on this iPhone, nothing is sent.'}
+              </Text>
+            </View>
+            <Toggle
+              value={smartReading && ai === 'available'}
+              disabled={ai !== 'available'}
+              onValueChange={(v) => setSettings({ smartReading: v })}
+              accessibilityLabel="Apple Intelligence"
+            />
+          </View>
+        </View>
+      )}
 
       <View style={styles.block}>
         <Text style={label}>Shortcuts</Text>

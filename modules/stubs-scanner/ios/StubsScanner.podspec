@@ -18,6 +18,8 @@ Pod::Spec.new do |s|
 
   s.dependency 'ExpoModulesCore'
   s.frameworks = 'PDFKit', 'Vision', 'VisionKit', 'UIKit'
+  # Apple Intelligence (iOS 26+): weak so the app still opens on older iOS.
+  s.weak_frameworks = 'FoundationModels'
 
   s.source_files = "**/*.{h,m,swift}"
   s.pod_target_xcconfig = {

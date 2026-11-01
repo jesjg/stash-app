@@ -344,15 +344,7 @@ export default function TicketScreen() {
               </View>
             ) : (
               <View style={styles.pageBody}>
-                <TicketCard
-                  stub={p.stub}
-                  index={p.index}
-                  tear={i === at ? tear : undefined}
-                  tearing={tearingAt === i}
-                  active={i === at}
-                  // Same count as the top of the screen.
-                  position={stubIds.length > 1 ? { at: stubIds.indexOf(p.stub.id) + 1, of: stubIds.length } : { at: p.index + 1, of: p.stub.tickets.length }}
-                >
+                <TicketCard stub={p.stub} index={p.index} tear={i === at ? tear : undefined} tearing={tearingAt === i} active={i === at}>
                   {p.stub.tickets[p.index] ? (
                     <Pressable
                       accessibilityRole="button"
@@ -392,7 +384,6 @@ function TicketCard({
   tear,
   tearing,
   active,
-  position,
 }: {
   stub: Stub;
   index: number;
@@ -400,9 +391,8 @@ function TicketCard({
   tear?: Animated.Value;
   tearing?: boolean;
   active?: boolean;
-  position?: { at: number; of: number };
 }) {
-  return <WalletTicket stub={stub} index={index} tear={tear} tearing={tearing} active={active} position={position} code={children ?? undefined} />;
+  return <WalletTicket stub={stub} index={index} tear={tear} tearing={tearing} active={active} code={children ?? undefined} />;
 }
 
 const styles = StyleSheet.create({

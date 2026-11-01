@@ -1,10 +1,14 @@
 # Sends JavaScript-only changes straight to phones as an over-the-air update.
 # Anything that touches native code or app config is skipped: that needs a new build.
+#
+# Turned off: it no longer runs when main changes. Updates are sent by hand with
+# `npx eas-cli@latest update --channel production --environment production`.
+# To turn it back on, add an EXPO_TOKEN repository secret and restore:
+#   push:
+#     branches: [main]
 name: Ship update
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:

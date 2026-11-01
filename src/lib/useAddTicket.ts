@@ -24,26 +24,6 @@ export function useAddTicket() {
     }
   }
 
-  function askForLink() {
-    Alert.prompt(
-      'Ticket link',
-      'Paste the link to your ticket page (GetYourGuide, Viator, a venue…). You can sign in on the next screen, then tap Capture when the QR code shows.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open',
-          onPress: (value?: string) => {
-            const url = value?.trim();
-            if (url) router.push({ pathname: '/web', params: { url: /^https?:\/\//i.test(url) ? url : `https://${url}` } });
-          },
-        },
-      ],
-      'plain-text',
-      '',
-      'url',
-    );
-  }
-
   /** Paper ticket: Apple's document camera, then the usual reading. */
   const paper = () =>
     run(async () => {
@@ -58,21 +38,12 @@ export function useAddTicket() {
 
   function open() {
     const ios = Platform.OS === 'ios';
-    const options = [
-      ...(isPaperScanAvailable ? ['Scan a paper ticket'] : []),
-      'Photos',
-      'PDF from Files',
-      ...(ios ? ['Ticket link'] : []),
-      'Paste check-in details',
-      'Cancel',
-    ];
+    const options = ['Photos', ...(isPaperScanAvailable ? ['Scan a paper ticket'] : []), 'PDF from Files', 'Cancel'];
     const handle = (i: number) => {
       const choice = options[i];
       if (choice === 'Scan a paper ticket') paper();
       if (choice === 'Photos') run(pickPhotos);
       if (choice === 'PDF from Files') run(pickDocument);
-      if (choice === 'Ticket link') askForLink();
-      if (choice === 'Paste check-in details') router.push('/paste');
     };
     if (ios) {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -94,5 +65,5 @@ export function useAddTicket() {
 
   const pdf = () => run(pickDocument);
 
-  return { open, screens, photos, pdf, paper, canScanPaper: isPaperScanAvailable, link: askForLink, busy };
+  return { open, screens, photos, pdf, paper, canScanPaper: isPaperScanAvailable, busy };
 }

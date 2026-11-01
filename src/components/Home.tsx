@@ -183,7 +183,7 @@ export function Home() {
                 { icon: 'doc' as const, text: 'From Mail', onPress: () => router.push('/mail-help') },
                 { icon: 'photo' as const, text: 'Photos', onPress: add.photos },
                 { icon: 'doc' as const, text: 'PDF from Files', onPress: add.pdf },
-                { icon: 'home' as const, text: 'Check-in details', onPress: () => router.push('/paste') },
+                ...(add.canScanPaper ? [{ icon: 'ticket' as const, text: 'Paper ticket', onPress: add.paper }] : []),
               ].map((t) => (
                 <Pressable
                   key={t.text}

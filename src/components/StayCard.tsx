@@ -155,7 +155,7 @@ export function StayCard({ stub }: { stub: Stub }) {
 
           {!hasAnything ? (
             <Text style={styles.empty}>
-              No address or codes yet. Tap ⋯ → Edit details to add them, or paste the host’s message with + → Paste check-in details.
+              No address or codes yet. Tap ⋯ → Edit details to add them.
             </Text>
           ) : null}
 

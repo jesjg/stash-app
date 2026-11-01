@@ -33,7 +33,7 @@ Copy each part into App Store Connect → Apps → Stash. Character limits are A
 > • Twelve ticket types, each with its own colour and icon: flight, train, ferry, bus, car, stay, gig, event, activity, visa, medical and other.
 >
 > STAYS, SORTED
-> • Paste the host's message or add screenshots of the check-in screens. Stash pulls out the address, check-in and check-out times, door code and Wi-Fi into one card, with directions and a call button.
+> • Add screenshots of the check-in screens. Stash pulls out the address, check-in and check-out times, door code and Wi-Fi into one card, with directions and a call button.
 >
 > TIDY
 > • Past tickets stay until you're done with them. Swipe left to archive. Mark a ticket as used and it tears off like the real thing.

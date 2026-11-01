@@ -75,9 +75,14 @@ export function aiStatus(): string {
 export async function readTicketWithAI(text: string, today: string): Promise<AIRead | null> {
   if (!native?.readTicketAsync || aiStatus() !== 'available' || !text.trim()) return null;
   try {
-    const r = await native.readTicketAsync(text, today);
-    return r.error ? null : r;
+    // Never keep the person waiting: after a while, carry on with what Stash read itself.
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), AI_TIMEOUT_MS));
+    const r = await Promise.race([native.readTicketAsync(text, today), timeout]);
+    return r && !r.error ? r : null;
   } catch {
     return null;
   }
 }
+
+/** How long to wait for Apple Intelligence before going without it. */
+const AI_TIMEOUT_MS = 12000;

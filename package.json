@@ -58,7 +58,8 @@
     "build:dev": "eas build --profile development --platform ios",
     "build:preview": "eas build --profile preview --platform ios",
     "postinstall": "patch-package",
-    "test:reader": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolve.mjs scripts/reader-tests.ts"
+    "test:reader": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolve.mjs scripts/reader-tests.ts",
+    "test:ai": "node --experimental-strip-types --no-warnings --import ./scripts/ts-resolve.mjs scripts/ai-merge-tests.ts"
   },
   "private": true
 }

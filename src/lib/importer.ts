@@ -1,10 +1,11 @@
 import { Directory, File, Paths } from 'expo-file-system';
-import { isScannerAvailable, scanFileAsync, type ScannedPage } from '../../modules/stubs-scanner';
+import { isScannerAvailable, readTicketWithAI, scanFileAsync, type ScannedPage } from '../../modules/stubs-scanner';
+import { mergeAI } from './aiReader';
 import { dayKey } from './dates';
 import { extractDetails, type Extracted, type PageText } from './extract';
 import { extractStay, type StayFound } from './stay';
 import { deleteStubFiles, newId, stubDir, titleFromFileName } from './files';
-import { setDraft } from './store';
+import { getState, setDraft } from './store';
 import type { Stub, Ticket } from './types';
 
 export type IncomingFile = {
@@ -107,7 +108,7 @@ async function buildDraft(id: string, files: IncomingFile[], options: ImportOpti
   }
 
   // Read date, time, seats, gates and refs off the ticket text.
-  const found = extractDetails(pageTexts, tickets.length);
+  const found = await readDetails(pageTexts, tickets.length);
   let stayFound: Stub['stay'];
   tickets.forEach((t, i) => {
     if (found.perTicket[i]?.length) t.details = found.perTicket[i];
@@ -162,10 +163,23 @@ export async function rereadStub(stub: Stub): Promise<Extracted & { stayFound?: 
     return { shared: [], perTicket: [], stayFound: extractStay(text) };
   }
   const pages = await readPages(stub);
-  const found = extractDetails(pages, stub.tickets.length);
+  const found = await readDetails(pages, stub.tickets.length);
   if (stub.kind !== 'stay' && found.kind !== 'stay') return found;
   const stayFound = extractStay(pages.map((p) => p.text).join('\n'));
   return { ...found, stayFound, time: stayFound.time ?? found.time, title: stayFound.title ?? found.title };
+}
+
+/**
+ * Stash's own reader, then Apple Intelligence (on the phone, iOS 26+) to fill gaps and tidy the
+ * title. Only answers that are printed on the ticket are used. Off if the person turned it off.
+ */
+async function readDetails(pages: PageText[], ticketCount: number): Promise<Extracted> {
+  const found = extractDetails(pages, ticketCount);
+  if (getState().settings.smartReading === false) return found;
+  const text = pages.map((p) => p.text).join('\n');
+  const ai = await readTicketWithAI(text, dayKey());
+  const { fromAI: _fromAI, ...merged } = mergeAI(found, ai, text, ticketCount);
+  return merged;
 }
 
 /** The text Stash reads off each saved page (for "Send what Stash read" in the ticket menu). */

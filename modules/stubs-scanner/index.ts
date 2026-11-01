@@ -85,4 +85,4 @@ export async function readTicketWithAI(text: string, today: string): Promise<AIR
 }
 
 /** How long to wait for Apple Intelligence before going without it. */
-const AI_TIMEOUT_MS = 12000;
+const AI_TIMEOUT_MS = 6000;

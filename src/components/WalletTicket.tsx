@@ -148,7 +148,9 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, te
   const date = `${Number(fmt.dayNum(stub.date))} ${fmt.mon(stub.date)}`;
   const cols = compact ? 2 : 3;
   const cells = cellsFor(stub, index);
-  const rows = rowsOf(compact ? cells.slice(0, 2) : cells, cols);
+  // Home screen cards keep to one row of two details (a passenger's name takes one column there),
+  // so every card is the same height.
+  const rows = compact ? [cells.slice(0, 2).map((c) => ({ ...c, span: 1 }))].filter((r) => r.length) : rowsOf(cells, cols);
   const notch = compact ? 20 : 24;
   const radius = compact ? 24 : 28;
   // Until the card has been measured, plain colours stand in for the drawn shape.

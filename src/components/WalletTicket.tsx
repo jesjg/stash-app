@@ -8,6 +8,7 @@ import { useStore } from '../lib/store';
 import { CodeView } from './CodeView';
 import { Sparkles } from './Sparkles';
 import { Icon } from './Icon';
+import { Logo } from './Logo';
 
 // Ticket card spec: system font (no fontFamily), white text on the type colour, black on white.
 const INK = '#111111';
@@ -143,7 +144,8 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, te
   const subtitle =
     stub.kind === 'stay'
       ? stub.stay?.address?.split(',')[0]
-      : [relativeDay(stub.date), count > 1 ? `Ticket ${index + 1} of ${count}` : ''].filter(Boolean).join(' · ');
+      : // The open ticket shows which ticket this is in its footer instead.
+        [relativeDay(stub.date), compact && count > 1 ? `Ticket ${index + 1} of ${count}` : ''].filter(Boolean).join(' · ');
   const day = fmt.dow(stub.date);
   const date = `${Number(fmt.dayNum(stub.date))} ${fmt.mon(stub.date)}`;
   const cols = compact ? 2 : 3;
@@ -276,6 +278,22 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, te
             </View>
           ))}
         </View>
+        {!compact && (
+          <View style={styles.footer}>
+            <View style={styles.footerBrand}>
+              <Logo size={26} />
+              <Text style={styles.footerName}>Stash</Text>
+            </View>
+            <View style={styles.footerBrand}>
+              <View style={styles.footerDots}>
+                {FOOTER_DOTS.map((c) => (
+                  <View key={c} style={[styles.footerDot, { backgroundColor: c }]} />
+                ))}
+              </View>
+              <Text style={styles.footerCount}>{count > 1 ? `Ticket ${index + 1} of ${count}` : '1 ticket'}</Text>
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -327,6 +345,9 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, te
   );
 }
 
+/** The pink, blue and green dots from the Stash logo. */
+const FOOTER_DOTS = ['#FF2D95', '#1E7BFF', '#00D16C'];
+
 const styles = StyleSheet.create({
   // No background here, so iOS draws the shadow from the card's drawn shape, notches and all.
   lift: { shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 12 } },
@@ -371,5 +392,11 @@ const styles = StyleSheet.create({
   cellLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8, color: SOFT, textAlign: 'center' },
   cellValue: { fontSize: 20, fontWeight: '700', color: INK, textAlign: 'center', fontVariant: ['tabular-nums'] },
   cellValueLong: { fontSize: 17 },
+  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
+  footerBrand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  footerName: { fontSize: 17, fontWeight: '700', color: INK },
+  footerDots: { flexDirection: 'row', gap: 4 },
+  footerDot: { width: 7, height: 7, borderRadius: 3.5 },
+  footerCount: { fontSize: 13, fontWeight: '500', color: SOFT },
   pill: { color: WHITE, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 1, fontSize: 18 },
 });

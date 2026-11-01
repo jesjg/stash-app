@@ -25,6 +25,7 @@ Copy each part into App Store Connect → Apps → Stash. Character limits are A
 > • In Mail, tap the ticket and Share → Stash. PDFs, screenshots and photos of paper tickets all work.
 > • Stash finds the QR code, Aztec code or barcode on every page, and reads the date, time, seat, gate, platform, booking reference and passenger names for you.
 > • Several passengers on one booking? Each gets their own ticket. Swipe between them at the gate.
+> • On iPhones with Apple Intelligence, it helps read the trickiest tickets too, right on your iPhone.
 >
 > READY ON THE DAY
 > • A reminder in the morning, or two hours before if there's a time. Tap it and the code is on screen at full brightness.
@@ -40,7 +41,7 @@ Copy each part into App Store Connect → Apps → Stash. Character limits are A
 >
 > PRIVATE BY DESIGN
 > • No account, no server, no tracking. Your tickets never leave your iPhone unless you send them.
-> • Codes and text are read on the phone with Apple's built-in tools.
+> • Codes and text are read on the phone with Apple's built-in tools, including Apple Intelligence. You can turn it off in Settings.
 >
 > Rotating codes, like Ticketmaster SafeTix, only work in the official app. Everything else belongs in Stash.
 
@@ -52,12 +53,6 @@ Copy each part into App Store Connect → Apps → Stash. Character limits are A
 **Marketing URL:** (leave empty)
 **Privacy Policy URL:** https://jesjg.github.io/stash-app/privacy/
 **Copyright:** 2026 [your full name]
-
-## Version 1.1.0
-
-**What's new** (4,000)
-
-> Smarter ticket reading. On iPhones with Apple Intelligence, Stash now uses it to read tricky tickets: better titles, and dates, times and booking references it used to miss. It all happens on your iPhone; nothing is sent anywhere. You can turn it off in Settings.
 
 ## App Privacy
 

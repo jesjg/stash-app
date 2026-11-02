@@ -4,6 +4,7 @@ import { ActionSheetIOS, Alert, Linking, Platform, Pressable, Share, StyleSheet,
 import Svg, { Path } from 'react-native-svg';
 import { daysBetween, dayKey, fmt } from '../lib/dates';
 import { copyText } from '../lib/native';
+import { updateStub } from '../lib/store';
 import { nightsOf } from '../lib/stayReader';
 import type { Stub } from '../lib/types';
 import { Icon, type IconName } from './Icon';
@@ -104,7 +105,20 @@ export function StayCard({ stub }: { stub: Stub }) {
   const ref = stub.details?.find((d) => d.label === 'Ref')?.value;
   const shots = stub.pageUris.length ? stub.pageUris : stub.tickets.map((t) => t.pageUri).filter(Boolean);
   const code = st.doorCode?.trim();
-  const boxes = code && /^[0-9A-Za-z#*]{1,8}$/.test(code);
+  // Not known yet: show 0000 until it's added with the pencil.
+  const shown = code || '0000';
+  const boxes = /^[0-9A-Za-z#*]{1,8}$/.test(shown);
+  const editCode = () =>
+    Alert.prompt(
+      'House code',
+      'The door, gate or key box code.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Save', onPress: (v?: string) => updateStub(stub.id, { stay: { ...st, doorCode: v?.trim() || undefined } }) },
+      ],
+      'plain-text',
+      code ?? '',
+    );
   const steps = st.arrival?.filter(Boolean) ?? [];
   const actions: { icon: IconName; label: string; onPress: () => void; primary?: boolean }[] = [
     ...(st.address
@@ -179,7 +193,7 @@ export function StayCard({ stub }: { stub: Stub }) {
         </View>
       ) : null}
 
-      {code ? (
+      {!stub.sample ? (
         <View style={styles.codeBox}>
           <View style={styles.codeIcon}>
             <Icon name="key" size={20} color={WHITE} stroke={2} />
@@ -188,21 +202,33 @@ export function StayCard({ stub }: { stub: Stub }) {
             <Text style={styles.codeLabel}>House code</Text>
             {boxes ? (
               <View style={styles.digits}>
-                {code.split('').map((c, i) => (
+                {shown.split('').map((c, i) => (
                   <View key={i} style={styles.digit}>
-                    <Text style={styles.digitText}>{c}</Text>
+                    <Text style={[styles.digitText, !code && styles.unknown]}>{c}</Text>
                   </View>
                 ))}
               </View>
             ) : (
               <Text style={styles.codeText} selectable>
-                {code}
+                {shown}
               </Text>
             )}
           </View>
-          <Pressable accessibilityRole="button" onPress={() => copy(code, 'Code copied')} style={({ pressed }) => [styles.copyPill, pressed && { opacity: 0.8 }]}>
-            <Text style={styles.copyText}>Copy</Text>
-          </Pressable>
+          <View style={styles.codeButtons}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Change the house code"
+              onPress={editCode}
+              style={({ pressed }) => [styles.codePencil, pressed && { opacity: 0.7 }]}
+            >
+              <Icon name="pencil" size={15} color={VIOLET} stroke={2.2} />
+            </Pressable>
+            {code ? (
+              <Pressable accessibilityRole="button" onPress={() => copy(code, 'Code copied')} style={({ pressed }) => [styles.copyPill, pressed && { opacity: 0.8 }]}>
+                <Text style={styles.copyText}>Copy</Text>
+              </Pressable>
+            ) : null}
+          </View>
         </View>
       ) : null}
 
@@ -234,7 +260,7 @@ export function StayCard({ stub }: { stub: Stub }) {
         </Pressable>
       ) : null}
 
-      {!st.address && !code && !steps.length && !st.gettingIn && !actions.length ? (
+      {!st.address && !steps.length && !st.gettingIn && !actions.length ? (
         <Text style={styles.empty}>No address or codes yet. Tap ⋯ → Edit details to add them.</Text>
       ) : null}
 
@@ -304,6 +330,9 @@ const styles = StyleSheet.create({
   digit: { minWidth: 34, height: 40, borderRadius: 8, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   digitText: { fontSize: 24, fontWeight: '800', color: INK, fontVariant: ['tabular-nums'] },
   codeText: { fontSize: 22, fontWeight: '800', color: INK },
+  unknown: { color: '#C9C2D6' },
+  codeButtons: { alignItems: 'flex-end', gap: 8 },
+  codePencil: { width: 36, height: 36, borderRadius: 18, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
   copyPill: { backgroundColor: VIOLET, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 9 },
   copyText: { fontSize: 15, fontWeight: '700', color: WHITE },
   box: { backgroundColor: BOX, borderRadius: 20, padding: 18, gap: 12 },

@@ -74,6 +74,20 @@ function hhmm(s: string | undefined): string | undefined {
   return h <= 23 ? `${String(h).padStart(2, '0')}:${m[2] ?? '00'}` : undefined;
 }
 
+/**
+ * A code only counts when the page says it's a code: on the same line as (or the line after)
+ * "code", "PIN", "lock box", "door", "gate", "key"… A bare number, like the battery level in the
+ * status bar, isn't one.
+ */
+export function codeOnPage(code: string, text: string): boolean {
+  const want = code.replace(/\s+/g, '').toLowerCase();
+  if (want.length < 3) return false;
+  const lines = text.split(/\r?\n/).map((l) => l.replace(/\s+/g, '').toLowerCase());
+  const raw = text.split(/\r?\n/);
+  const WORD = /\b(code|codes|pin|passcode|lock ?box|key ?box|key ?safe|keypad|door|gate|entry|access|key)\b/i;
+  return lines.some((l, i) => l.includes(want) && (WORD.test(raw[i]) || (i > 0 && WORD.test(raw[i - 1]))));
+}
+
 /** A host is a name or two: "Made", "Ana & Luis". Not OCR noise. */
 const NAME = /^\p{Lu}[\p{L}'’.-]*(?:\s+(?:&|and|\p{Lu}[\p{L}'’.-]*)){0,3}$/u;
 
@@ -106,7 +120,7 @@ export function readStayPage(text: string, ai: AIStayAnswer | null, today = new 
     address: address && titleOnTicket(address, text) ? address : r.address,
     // A summary in the model's words: most of its words must still be on the page.
     gettingIn: gettingIn && titleOnTicket(gettingIn, text, 0.5) ? gettingIn : undefined,
-    doorCode: code && printed(code, text) ? code : r.doorCode,
+    doorCode: code && codeOnPage(code, text) ? code : r.doorCode,
     wifiName: wifiName && printed(wifiName, text) ? wifiName : r.wifiName,
     wifiPassword: wifiPassword && printed(wifiPassword, text) ? wifiPassword : r.wifiPassword,
     phone: phone && digits(phone).length >= 7 && digits(text).includes(digits(phone)) ? phone : r.phone,

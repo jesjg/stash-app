@@ -204,7 +204,8 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
         <View style={styles.field}>
           <Text style={label}>Type</Text>
           <View style={styles.chips}>
-            {KINDS.map((k) => {
+            {/* Stays have their own screen (+ → Add stay), so Stay isn't a ticket type. */}
+            {KINDS.filter((k) => k.id !== 'stay' || stub.kind === 'stay').map((k) => {
               const on = k.id === kind;
               return (
                 <Pressable

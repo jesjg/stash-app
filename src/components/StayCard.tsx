@@ -134,7 +134,9 @@ export function StayCard({ stub }: { stub: Stub }) {
   return (
     <View style={styles.page}>
       <View style={styles.header}>
-        <View style={styles.glow} />
+        {/* A big crescent moon: a pale disc with a violet one over its top right. */}
+        <View style={styles.moon} />
+        <View style={styles.moonCut} />
         <Star right={128} top={34} size={12} />
         <Star right={112} top={62} size={7} />
         <View style={styles.headTop}>
@@ -296,7 +298,8 @@ export function StayCard({ stub }: { stub: Stub }) {
 const styles = StyleSheet.create({
   page: { gap: 14 },
   header: { backgroundColor: VIOLET, borderRadius: 28, padding: 20, gap: 18, overflow: 'hidden' },
-  glow: { position: 'absolute', right: -70, top: -70, width: 210, height: 210, borderRadius: 105, backgroundColor: 'rgba(255,255,255,0.12)' },
+  moon: { position: 'absolute', right: -20, top: -70, width: 230, height: 230, borderRadius: 115, backgroundColor: 'rgba(255,255,255,0.14)' },
+  moonCut: { position: 'absolute', right: -64, top: -112, width: 220, height: 220, borderRadius: 110, backgroundColor: VIOLET },
   headTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   badge: { width: 40, height: 40, borderRadius: 20, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },

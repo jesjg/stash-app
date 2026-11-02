@@ -298,8 +298,9 @@ export function StayCard({ stub }: { stub: Stub }) {
 const styles = StyleSheet.create({
   page: { gap: 14 },
   header: { backgroundColor: VIOLET, borderRadius: 28, padding: 20, gap: 18, overflow: 'hidden' },
-  moon: { position: 'absolute', right: -20, top: -70, width: 230, height: 230, borderRadius: 115, backgroundColor: 'rgba(255,255,255,0.14)' },
-  moonCut: { position: 'absolute', right: -64, top: -112, width: 220, height: 220, borderRadius: 110, backgroundColor: VIOLET },
+  // Small enough to stay clear of the dates box below.
+  moon: { position: 'absolute', right: 8, top: -36, width: 150, height: 150, borderRadius: 75, backgroundColor: 'rgba(255,255,255,0.14)' },
+  moonCut: { position: 'absolute', right: -22, top: -66, width: 145, height: 145, borderRadius: 72.5, backgroundColor: VIOLET },
   headTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   badge: { width: 40, height: 40, borderRadius: 20, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },

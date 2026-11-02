@@ -182,12 +182,6 @@ async function readDetails(pages: PageText[], ticketCount: number): Promise<Extr
   return merged;
 }
 
-/** The text Stash reads off each saved page (for "Send what Stash read" in the ticket menu). */
-export async function readStubText(stub: Stub): Promise<string> {
-  const pages = await readPages(stub);
-  return pages.map((p, i) => `--- page ${i + 1} (${p.codes} code${p.codes === 1 ? '' : 's'}) ---\n${p.text || '(no text found)'}`).join('\n\n');
-}
-
 async function readPages(stub: Stub): Promise<PageText[]> {
   if (!isScannerAvailable) throw new Error('Reading tickets needs the full app, not Expo Go.');
   const scratch = new Directory(Paths.cache, `reread-${stub.id}`);

@@ -5,7 +5,8 @@
 // Pure functions, no I/O, so it's easy to test.
 import { dateOnTicket, printed, timeOnTicket, titleOnTicket } from './aiReader';
 import { daysBetween } from './dates';
-import { extractStay } from './stay';
+import { findDates } from './extract';
+import { extractStay, strayIcon } from './stay';
 
 /** Same shape as AIStayRead in modules/stubs-scanner (kept separate so tests don't load native code). */
 export type AIStayAnswer = {
@@ -54,6 +55,28 @@ const clean = (s: string | undefined, max: number) => {
 };
 const digits = (s: string) => s.replace(/\D/g, '');
 
+/** The model doesn't always answer YYYY-MM-DD: "2026-11-9" or "Mon, 9 Nov 2026" are fine too. */
+function isoDay(s: string | undefined, today: Date): string | undefined {
+  const t = s?.trim();
+  if (!t) return undefined;
+  const m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  return findDates([t], today)[0]?.date;
+}
+
+/** "14:00", "2:00 pm", "2pm" → "14:00". */
+function hhmm(s: string | undefined): string | undefined {
+  const m = s?.trim().match(/^(\d{1,2})(?:[:.](\d{2}))?\s*([ap])?\.?m?\.?$/i);
+  if (!m) return undefined;
+  let h = Number(m[1]);
+  if (m[3]?.toLowerCase() === 'p' && h < 12) h += 12;
+  if (m[3]?.toLowerCase() === 'a' && h === 12) h = 0;
+  return h <= 23 ? `${String(h).padStart(2, '0')}:${m[2] ?? '00'}` : undefined;
+}
+
+/** A host is a name or two: "Made", "Ana & Luis". Not OCR noise. */
+const NAME = /^\p{Lu}[\p{L}'’.-]*(?:\s+(?:&|and|\p{Lu}[\p{L}'’.-]*)){0,3}$/u;
+
 /** Everything one page says about the stay. */
 export function readStayPage(text: string, ai: AIStayAnswer | null, today = new Date()): StayValues {
   const rules = extractStay(text, today);
@@ -62,7 +85,11 @@ export function readStayPage(text: string, ai: AIStayAnswer | null, today = new 
 
   const place = clean(a.place, 60);
   const host = clean(a.host, 30);
-  const address = clean(a.address, 140);
+  const address = clean(a.address && strayIcon(a.address.trim()), 140);
+  const inDay = isoDay(a.checkInDate, today);
+  const outDay = isoDay(a.checkOutDate, today);
+  const inTime = hhmm(a.checkInTime);
+  const outTime = hhmm(a.checkOutTime);
   const gettingIn = clean(a.gettingIn, 70);
   const code = clean(a.doorCode, 20);
   const wifiName = clean(a.wifiName, 40);
@@ -71,11 +98,11 @@ export function readStayPage(text: string, ai: AIStayAnswer | null, today = new 
 
   const out: StayValues = {
     place: place && titleOnTicket(place, text) ? place : rules.title,
-    host: host && printed(host, text) ? host : r.host,
-    checkIn: a.checkInDate && dateOnTicket(a.checkInDate, text) ? a.checkInDate : rules.date,
-    checkInTime: a.checkInTime && timeOnTicket(a.checkInTime, text) ? a.checkInTime : rules.time,
-    checkOut: a.checkOutDate && dateOnTicket(a.checkOutDate, text) ? a.checkOutDate : r.checkOutDate,
-    checkOutTime: a.checkOutTime && timeOnTicket(a.checkOutTime, text) ? a.checkOutTime : r.checkOutTime,
+    host: host && NAME.test(host) && printed(host, text) ? host : r.host && NAME.test(r.host) ? r.host : undefined,
+    checkIn: inDay && dateOnTicket(inDay, text) ? inDay : rules.date,
+    checkInTime: inTime && timeOnTicket(inTime, text) ? inTime : rules.time,
+    checkOut: outDay && dateOnTicket(outDay, text) ? outDay : r.checkOutDate,
+    checkOutTime: outTime && timeOnTicket(outTime, text) ? outTime : r.checkOutTime,
     address: address && titleOnTicket(address, text) ? address : r.address,
     // A summary in the model's words: most of its words must still be on the page.
     gettingIn: gettingIn && titleOnTicket(gettingIn, text, 0.5) ? gettingIn : undefined,

@@ -83,24 +83,46 @@ function findWhen(lines: string[], today: Date): { in: When; out: When } {
         // Stop at the other label: "Check-in 15:00 Check-out 11:00"
         const cut = part.split(re === CHECK_IN_LINE ? CHECK_OUT : CHECK_IN)[0];
         into.date ??= firstDate(cut, today);
-        into.time ??= looseTime(stripDates(cut));
+        // A window ("Check-out: 8:00 am - 12:00 pm"): check in from the start, check out by the end.
+        const window = stripDates(cut).split(RANGE).filter((x) => looseTime(x));
+        into.time ??= looseTime(re === CHECK_OUT_LINE ? (window[window.length - 1] ?? cut) : (window[0] ?? cut));
       }
       if (into.date && into.time) return;
     }
   };
   take(CHECK_IN_LINE, result.in);
   take(CHECK_OUT_LINE, result.out);
+  // Booking.com: both days on one line, "Mon, 9 Nov 2026 - Tue, 10 Nov 2026".
+  if (!result.in.date || !result.out.date) {
+    for (const l of lines) {
+      const halves = l.replace(/\t/g, ' ').split(RANGE);
+      if (halves.length !== 2) continue;
+      const a = firstDate(halves[0], today);
+      const b = firstDate(halves[1], today);
+      if (a && b && b > a) {
+        result.in.date ??= a;
+        result.out.date ??= b;
+        break;
+      }
+    }
+  }
   return result;
 }
+const RANGE = /\s+[-–—]\s+|\s+to\s+|\s+until\s+/i;
+/** Booking.com and others draw a copy icon after the address, which reads as a stray letter. */
+export const strayIcon = (l: string) => {
+  const m = l.match(/^(.*\S)\s+[A-Za-z]$/);
+  return m && COUNTRY.test(m[1].split(/[,\s]+/).pop() ?? '') ? m[1] : l;
+};
 const CHECK_IN_LINE = /\bcheck[\s-]?in\b(?!\s*(instructions|method|details|guide))[\s:]*(?:from|after|time|is|at|:)?/i;
 const CHECK_OUT_LINE = /\bcheck[\s-]?out\b[\s:]*(?:by|before|until|time|is|at|:)?/i;
 
-const UI_LINE = /^(get directions|directions|copy( address)?|show (on )?map|open in maps|view map|map|message( the)? host|contact host|call|show more|read more|show listing|get help)$/i;
+const UI_LINE = /^(get directions|change dates|view details|view all policies|property policies|add arrival time|directions|copy( address)?|show (on )?map|open in maps|view map|map|message( the)? host|contact host|call|show more|read more|show listing|get help)$/i;
 const STREET =
   /\b(street|st\.?|road|rd\.?|avenue|ave\.?|lane|ln\.?|way|drive|dr\.?|close|place|square|sq\.?|terrace|crescent|court|grove|hill|row|walk|mews|odos|odós|οδός|via|viale|piazza|rue|avenue|calle|carrer|avenida|strasse|straße|weg|platz|gasse|rua|marina|harbour|harbor|quay)\b/i;
 // UK, Greek (311 00), US (CA 91108), 5-digit, Dutch (1012 AB), Canadian, 4-digit before a town (5700 Zell). Not years.
 const POSTCODE = /\b([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}|\d{3}\s\d{2}|[A-Z]{2}\s\d{5}|(?!20\d{3}\b)\d{5}|\d{4}\s?[A-Z]{2}\b|[A-Z]\d[A-Z]\s?\d[A-Z]\d|(?!(?:19|20)\d{2}\b)\d{4}(?=\s+[A-Z]\p{L}))\b/u;
-const COUNTRY = /\b(greece|uk|united kingdom|england|scotland|wales|ireland|france|spain|italy|portugal|germany|austria|switzerland|netherlands|croatia|usa|united states|new zealand|australia)\b/i;
+const COUNTRY = /\b(greece|uk|united kingdom|england|scotland|wales|ireland|france|spain|italy|portugal|germany|austria|switzerland|netherlands|croatia|usa|united states|new zealand|australia|indonesia|thailand|vietnam|malaysia|singapore|philippines|japan|south korea|india|sri lanka|maldives|mexico|canada|brazil|argentina|peru|chile|colombia|costa rica|morocco|egypt|south africa|turkey|türkiye|cyprus|malta|belgium|denmark|sweden|norway|finland|iceland|poland|czechia|czech republic|hungary|slovenia|montenegro|albania|united arab emirates|uae)\b/i;
 
 const SENTENCE_WORDS = /\b(you|your|we|our|the|to|before|after|things|please|will|is|are|have|has|just|when|if)\b/i;
 
@@ -135,7 +157,7 @@ function findAddress(lines: string[]): string | undefined {
         continue;
       }
       if (parts.length && !(POSTCODE.test(n) || COUNTRY.test(n) || n.length < 30)) break;
-      if (/^(check|wi-?fi|host|house|your|confirmation|cancell|phone|tel|email|contact|booking|reservation|pin)\b/i.test(n)) break;
+      if (/^(check|wi-?fi|host|house|your|confirmation|cancell|phone|tel|email|contact|booking|reservation|pin|property|view|change)\b/i.test(n)) break;
       parts.push(n);
       if (parts.length >= 2 || COUNTRY.test(n)) break;
     }
@@ -263,9 +285,16 @@ function findTitle(lines: string[], address: string | undefined, today: Date, av
   const street = address?.split(',')[0].trim();
   const at = street ? lines.findIndex((l) => l.replace(/\t/g, ' ').includes(street)) : -1;
   const above = at > 0 ? lines[at - 1].replace(/\t/g, ' ').trim() : '';
-  if (above && above.length <= 45 && !/\d/.test(above) && !/[.!?:,]$/.test(above) && !SENTENCE_WORDS.test(above) && !/^(address|location|getting there)\b/i.test(above)) {
+  if (above && above.length <= 45 && !/\d/.test(above) && !/[.!?:,]$/.test(above) && !SENTENCE_WORDS.test(above) && !/^(address|location|getting there|property|your)\b/i.test(above)) {
     return above;
   }
+  // Booking.com: the property name sits right above the dates ("Mon, 9 Nov 2026 - Tue, 10 Nov 2026").
+  const range = lines.findIndex((l) => {
+    const h = l.split(RANGE);
+    return h.length === 2 && !!firstDate(h[0], today) && !!firstDate(h[1], today);
+  });
+  const name = range > 0 ? lines[range - 1].replace(/\t/g, ' ').trim() : '';
+  if (name && name.length <= 45 && !/\d/.test(name) && !/[.!?:,]$/.test(name) && !SENTENCE_WORDS.test(name) && !UI_LINE.test(name)) return name;
   for (const l of lines) {
     const m = l
       .replace(/\t/g, ' ')
@@ -312,7 +341,7 @@ export function extractStay(text: string, today = new Date()): StayFound {
   const lines = text
     .split(/\r?\n/)
     .flatMap((l) => (l.length > 100 ? l.split(/(?<=[.!?])\s+(?=[A-Z])/) : [l]))
-    .map((l) => l.trim())
+    .map((l) => strayIcon(l.trim()))
     .filter(Boolean);
   const when = findWhen(lines, today);
   const address = findAddress(lines);

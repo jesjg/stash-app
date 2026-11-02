@@ -187,6 +187,26 @@ export function StayCard({ stub }: { stub: Stub }) {
         </Pressable>
       ) : null}
 
+      {st.phone ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Contact number ${st.phone}. Call or message`}
+          onPress={() => messageHost(st.phone!, st.host)}
+          style={styles.addressRow}
+        >
+          <Icon name="phone" size={20} color={INK} stroke={2} />
+          <View style={{ flex: 1, gap: 1 }}>
+            <Text style={styles.contactLabel}>{st.host ? `Contact ${st.host}` : 'Contact the property'}</Text>
+            <Text style={styles.address} selectable>
+              {st.phone}
+            </Text>
+          </View>
+          <View style={styles.callPill}>
+            <Text style={styles.callText}>Call</Text>
+          </View>
+        </Pressable>
+      ) : null}
+
       {actions.length ? (
         <View style={styles.actions}>
           {actions.map((a) => (
@@ -321,6 +341,9 @@ const styles = StyleSheet.create({
   time: { fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.85)' },
   nights: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: WHITE, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
   nightsText: { fontSize: 15, fontWeight: '700', color: VIOLET },
+  contactLabel: { fontSize: 13, color: SOFT },
+  callPill: { backgroundColor: VIOLET, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8 },
+  callText: { fontSize: 15, fontWeight: '700', color: WHITE },
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: BOX, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14 },
   address: { flex: 1, fontSize: 17, fontWeight: '500', color: INK },
   actions: { flexDirection: 'row', gap: 4 },

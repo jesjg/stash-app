@@ -43,7 +43,7 @@ struct AITicket {
 struct AIStay {
   @Guide(description: "The name of the place to stay as the booking shows it, e.g. 'Home in Gili T' or 'Hotel Lisboa'. Empty if not shown.")
   var place: String
-  @Guide(description: "The host's first name, e.g. from 'Hosted by Made'. Empty if not shown.")
+  @Guide(description: "The host's first name, e.g. from 'Hosted by Made'. Never the guest's own name. Empty if not shown.")
   var host: String
   @Guide(description: "Check-in day as YYYY-MM-DD. Empty if not shown.")
   var checkInDate: String
@@ -55,7 +55,7 @@ struct AIStay {
   var checkOutTime: String
   @Guide(description: "The street address of the place, as printed. Empty if not shown.")
   var address: String
-  @Guide(description: "How the guest gets in, in a few words, e.g. 'Lockbox by the door' or 'Host meets you, key in person'. Empty if not shown.")
+  @Guide(description: "How the guest gets the keys or gets in, in a few words, e.g. 'Keys at reception' or 'Lockbox by the door'. Not payment, safety or cancellation notices. Empty if not shown.")
   var gettingIn: String
   @Guide(description: "The door, gate, key box or house code, exactly as printed. Empty if not shown.")
   var doorCode: String
@@ -63,7 +63,7 @@ struct AIStay {
   var wifiName: String
   @Guide(description: "The Wi-Fi password, exactly as printed. Empty if not shown.")
   var wifiPassword: String
-  @Guide(description: "The host's or property's phone number, as printed. Empty if not shown.")
+  @Guide(description: "The host's or property's phone number, as printed, e.g. from 'Call +62 813-3067-0784'. Empty if not shown.")
   var phone: String
   @Guide(description: "Directions for arriving, as short steps in order, e.g. 'From the harbour, turn left at the mosque.' At most 5. Empty if there are none.")
   var arrival: [String]

@@ -68,5 +68,21 @@ const shot3 = [
   const lockbox = readStayPage('The lockbox is by the door.\nCode: 7314', { doorCode: '7314' }, today);
   check('a labelled code is kept', lockbox.doorCode === '7314');
 }
+{
+  // Booking.com, three screenshots: booking, check-in instructions, room and guests.
+  const one = ['Booking.com', 'requests you receive and avoid clicking on', 'payment links.', 'View more', 'Marilea Bamboo Villas Concept ,', 'Private pool, seaview, Adults only', 'Fri, 13 Nov 2026 - Sat, 14 Nov 2026', 'Check-in: from 2:00 pm', 'Check-out: until 11:00 am', 'Change dates', 'Check-in instructions', 'View details', 'Property address', 'Jalan Gamat Bay ,Desa Sakti Kabupaten', 'Klungkung Nusa Penida, 80771 Nusa Penida,', 'Indonesia L', 'Get directions', 'Contact the property', 'Message property', 'Send a message', 'Other methods', 'Call +62 813-3067-0784'].join('\n');
+  const two = ['Check-in instructions', 'Getting into the property', 'The keys are at a reception on location.', 'Contact property'].join('\n');
+  const three = ['Manage booking', "You've booked 1 room", 'Villa with Private Pool', 'Guests', 'Jes Jones Gardner', 'Benefits', '15% Genius discount applied'].join('\n');
+  let d = emptyStay();
+  d = addStayPage(d, readStayPage(one, { gettingIn: 'payment links.', host: '' }, today), 0);
+  d = addStayPage(d, readStayPage(two, null, today), 1);
+  d = addStayPage(d, readStayPage(three, { host: 'Jes Jones Gardner' }, today), 2);
+  check('Marilea: phone number found', d.phone === '+62 813-3067-0784' && d.source.phone === 0);
+  check('Marilea: dates 13–14 Nov, from 14:00, until 11:00', d.checkIn === '2026-11-13' && d.checkOut === '2026-11-14' && d.checkInTime === '14:00' && d.checkOutTime === '11:00');
+  check('Marilea: a payment warning is not how you get in', d.gettingIn === 'The keys are at a reception on location.' && d.source.gettingIn === 1);
+  check("Marilea: the guest isn't the host", d.host === undefined);
+  check('Marilea: the name, not its second line', d.place === 'Marilea Bamboo Villas Concept');
+  check('Marilea: the whole address', d.address === 'Jalan Gamat Bay, Desa Sakti Kabupaten, Klungkung Nusa Penida, 80771 Nusa Penida, Indonesia');
+}
 console.log(bad ? `\n${bad} failed` : '\nAll passed');
 process.exit(bad ? 1 : 0);

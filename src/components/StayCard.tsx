@@ -249,14 +249,18 @@ export function StayCard({ stub }: { stub: Stub }) {
               <Pressable
                 key={uri}
                 accessibilityRole="button"
-                accessibilityLabel="Open screenshot"
+                accessibilityLabel="Screenshot. Tap to enlarge"
                 onPress={() => router.push({ pathname: '/original/[id]', params: { id: stub.id, page: uri } })}
                 style={({ pressed }) => [styles.shot, pressed && { opacity: 0.8 }]}
               >
                 <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                <View style={styles.zoomBadge}>
+                  <Icon name="zoomIn" size={12} color={WHITE} stroke={2.4} />
+                </View>
               </Pressable>
             ))}
           </View>
+          <Text style={styles.enlarge}>Tap a screenshot to enlarge</Text>
         </View>
       ) : null}
     </View>
@@ -316,5 +320,7 @@ const styles = StyleSheet.create({
   shotsLabel: { fontSize: 13, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase', color: SOFT },
   shotsCount: { fontSize: 15, fontWeight: '600', color: VIOLET },
   shots: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  zoomBadge: { position: 'absolute', right: 5, bottom: 5, width: 22, height: 22, borderRadius: 11, backgroundColor: VIOLET, alignItems: 'center', justifyContent: 'center' },
+  enlarge: { fontSize: 13, fontWeight: '500', color: VIOLET },
   shot: { width: 64, height: 96, borderRadius: 12, overflow: 'hidden', backgroundColor: BOX, borderWidth: 1, borderColor: '#E7E7EA' },
 });

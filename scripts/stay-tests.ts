@@ -48,5 +48,18 @@ const shot3 = [
   const p = readStayPage(shot3, null, today);
   check('no Apple Intelligence: rules still find the code', p.doorCode === '7314');
 }
+{
+  // Booking.com: both days on one line, a check-out window, a copy icon read as "L".
+  const booking = ['Booking.com', 'Jatelu Sanur', 'Mon, 9 Nov 2026 - Tue, 10 Nov 2026', 'Check-in: 3:00 pm - 10:00 pm', 'Check-out: 8:00 am - 12:00 pm', 'Change dates', 'Check-in instructions', 'View details', 'Property address', 'Jl. Lantang Hidung, 80227 Sanur, Indonesia L', 'Get directions', 'Property policies', 'View all policies'].join('\n');
+  const rules = readStayPage(booking, null, today);
+  check('Booking.com without Apple Intelligence: name', rules.place === 'Jatelu Sanur');
+  check('Booking.com: dates 9–10 Nov', rules.checkIn === '2026-11-09' && rules.checkOut === '2026-11-10');
+  check('Booking.com: check in from 15:00, out by 12:00', rules.checkInTime === '15:00' && rules.checkOutTime === '12:00');
+  check('Booking.com: address without the copy icon', rules.address === 'Jl. Lantang Hidung, 80227 Sanur, Indonesia');
+  const ai = readStayPage(booking, { place: 'Jatelu Sanur', checkInDate: 'Mon, 9 Nov 2026', checkOutDate: '2026-11-10', checkInTime: '3:00 pm', host: 'nthor mothoʌr', address: 'Jl. Lantang Hidung, 80227 Sanur, Indonesia L' }, today);
+  check('Apple Intelligence dates in other formats are used', ai.checkIn === '2026-11-09' && ai.checkInTime === '15:00');
+  check('OCR noise is not a host', ai.host === undefined);
+  check('copy icon dropped from the address', ai.address === 'Jl. Lantang Hidung, 80227 Sanur, Indonesia');
+}
 console.log(bad ? `\n${bad} failed` : '\nAll passed');
 process.exit(bad ? 1 : 0);

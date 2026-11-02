@@ -24,22 +24,20 @@ import { dayKey, fmt, timeKey, toDate } from '../lib/dates';
 import { deleteStubFiles, newId } from '../lib/files';
 import type { IncomingFile } from '../lib/importer';
 import { pickPhotos } from '../lib/pickers';
-import { isPast, saveDraft, setDraft, updateStub, useStore } from '../lib/store';
+import { getState, isPast, saveDraft, setDraft, updateStub, useStore } from '../lib/store';
 import { scanStayFile, takePendingStayFiles, type StayPage } from '../lib/stayImport';
 import { addStayPage, emptyStay, hasField, nightsOf, readStayPage, type StayDraft, type StayField } from '../lib/stayReader';
 import type { Stay, Stub } from '../lib/types';
 
-// New stay: "Reading your booking" while each screenshot is read, then "Check the details".
-// Also opened with ?edit=<id> from a stay's ⋯ menu, straight on the check step.
+// New stay: one page. Each screenshot is read in turn and the details fill in as they're found;
+// tap a pencil to change one, or a screenshot to enlarge it. Also opened with ?edit=<id> from a
+// stay's ⋯ menu.
 
 const VIOLET = '#9747FF';
-const TINT = '#F3ECFF';
 const INK = '#111111';
 const SOFT = '#6B6B70';
 const BOX = '#F5F5F7';
 const LINE = '#E7E7EA';
-const AMBER = '#B26A00';
-const AMBER_TINT = '#FFF3DC';
 
 type Page = StayPage & { done: boolean };
 
@@ -52,8 +50,6 @@ const ROWS: { field: StayField; label: string; icon: IconName; looking: string }
   { field: 'wifi', label: 'Wi-Fi', icon: 'wifi', looking: 'Looking…' },
   { field: 'arrival', label: 'Arriving', icon: 'steps', looking: 'Looking for directions…' },
 ];
-/** The reading screen shows the main five. */
-const READING_ROWS: StayField[] = ['place', 'dates', 'address', 'gettingIn', 'wifi'];
 
 const shortDay = (d: string) => `${fmt.dow(d)} ${Number(fmt.dayNum(d))} ${fmt.mon(d)}`;
 
@@ -79,7 +75,7 @@ function valueOf(d: StayDraft, field: StayField): string | undefined {
     case 'wifi':
       return [d.wifiName, d.wifiPassword].filter(Boolean).join(' · ') || undefined;
     case 'arrival':
-      return d.arrival?.length ? `${d.arrival.length} step${d.arrival.length === 1 ? '' : 's'}` : undefined;
+      return d.arrival?.length ? d.arrival.filter((a) => a.trim()).map((a, i) => `${i + 1}. ${a.trim()}`).join('\n') : undefined;
   }
 }
 
@@ -108,7 +104,6 @@ export default function NewStay() {
   const editing = useStore((s) => (edit ? s.stubs.find((x) => x.id === edit) : undefined));
   const insets = useSafeAreaInsets();
   const [id] = useState(() => editing?.id ?? newId());
-  const [step, setStep] = useState<'reading' | 'check'>(editing ? 'check' : 'reading');
   const [pages, setPages] = useState<Page[]>(() =>
     (editing?.pageUris ?? []).map((imageUri) => ({ imageUri, text: '', label: 'Screenshot', done: true })),
   );
@@ -160,10 +155,20 @@ export default function NewStay() {
     else router.back();
     // Files left behind if the screen closes without saving.
     return () => {
-      if (!saved.current) deleteStubFiles(id);
+      if (saved.current) return;
+      if (getState().draft?.id === id) setDraft(null);
+      else deleteStubFiles(id);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on open
   }, []);
+
+  // Keep the screenshots in a draft so "tap to enlarge" can show them before the stay is saved.
+  useEffect(() => {
+    if (editing || saved.current || !pages.length) return;
+    const uris = pages.map((p) => p.imageUri);
+    setDraft({ id, title: draft.place ?? 'Stay', kind: 'stay', date: dayKey(), tickets: [], sourceUri: uris[0], sourceName: 'Booking screenshots', pageUris: uris, createdAt: Date.now() });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the screenshots change
+  }, [pages.length]);
 
   const set = (patch: Partial<StayDraft>) => setDraftState((d) => ({ ...d, ...patch }));
 
@@ -212,61 +217,80 @@ export default function NewStay() {
     if (result) showToast(isPast(result) ? 'Saved under Past: that date has passed.' : result.reminderId ? 'Stay saved. Reminder set for check-in.' : 'Stay saved.');
   }
 
-  const cancel = () => {
-    if (step === 'check' && !editing) setStep('reading');
-    else router.back();
-  };
-
-  const read = pages.filter((p) => p.done).length;
   const label = (i: number) => (pages[i]?.label === 'Screenshot' ? `Screenshot ${i + 1}` : (pages[i]?.label ?? ''));
+  const enlarge = (uri: string) => router.push({ pathname: '/original/[id]', params: { id, page: uri } });
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={[styles.topBar, { paddingTop: 16 }]}>
-        <Pressable accessibilityRole="button" onPress={cancel} hitSlop={12} style={styles.topBtn}>
-          <Text style={styles.topText}>{step === 'check' && !editing ? 'Back' : 'Cancel'}</Text>
+        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={12} style={styles.topBtn}>
+          <Text style={styles.topText}>Cancel</Text>
         </Pressable>
         <Text style={styles.heading}>{editing ? 'Edit stay' : 'New stay'}</Text>
         <View style={styles.topBtn} />
       </View>
 
-      {step === 'reading' ? (
-        <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.title}>Reading your booking</Text>
-          <Text style={styles.sub}>
-            Add screenshots from Airbnb, Booking.com or your host’s messages. Stash pulls out what you’ll need on arrival.
-          </Text>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Text style={styles.title}>{editing ? 'Your stay' : 'Reading your booking'}</Text>
+        <Text style={styles.sub}>
+          {editing
+            ? 'Tap the pencil to change anything.'
+            : 'Add screenshots from Airbnb, Booking.com or your host’s messages. Stash pulls out what you’ll need on arrival. Tap the pencil to change anything.'}
+        </Text>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbs}>
-            {pages.map((p, i) => (
-              <View key={`${p.imageUri}-${i}`} style={styles.thumb}>
-                <Image source={{ uri: p.imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                {p.done ? (
-                  <View style={styles.thumbCheck}>
-                    <Icon name="check" size={14} color="#FFFFFF" stroke={3} />
+        {pages.length || !editing ? (
+          <View style={{ gap: 8 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbs}>
+              {pages.map((p, i) => (
+                <Pressable
+                  key={`${p.imageUri}-${i}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${label(i)}. Tap to enlarge`}
+                  onPress={() => enlarge(p.imageUri)}
+                  style={({ pressed }) => [styles.thumb, pressed && { opacity: 0.8 }]}
+                >
+                  <Image source={{ uri: p.imageUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                  {p.done ? (
+                    <View style={styles.thumbCheck}>
+                      <Icon name="check" size={14} color="#FFFFFF" stroke={3} />
+                    </View>
+                  ) : (
+                    <ScanLine />
+                  )}
+                  <View style={styles.zoomBadge}>
+                    <Icon name="zoomIn" size={14} color="#FFFFFF" stroke={2.4} />
                   </View>
-                ) : (
-                  <ScanLine />
-                )}
-              </View>
-            ))}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Add more screenshots"
-              onPress={() => pickPhotos().then(add)}
-              style={({ pressed }) => [styles.thumb, styles.addThumb, pressed && { opacity: 0.6 }]}
-            >
-              <Icon name="plus" size={22} color={VIOLET} />
-              <Text style={styles.addText}>Add</Text>
-            </Pressable>
-          </ScrollView>
+                </Pressable>
+              ))}
+              {!editing ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Add more screenshots"
+                  onPress={() => pickPhotos().then(add)}
+                  style={({ pressed }) => [styles.thumb, styles.addThumb, pressed && { opacity: 0.6 }]}
+                >
+                  <Icon name="plus" size={22} color={VIOLET} />
+                  <Text style={styles.addText}>Add</Text>
+                </Pressable>
+              ) : null}
+            </ScrollView>
+            {pages.length ? <Text style={styles.enlargeHint}>Tap a screenshot to enlarge</Text> : null}
+          </View>
+        ) : null}
 
-          <View style={styles.box}>
-            {READING_ROWS.map((field, i) => {
-              const row = ROWS.find((r) => r.field === field)!;
-              const found = hasField(draft, field);
-              return (
-                <View key={field} style={[styles.readRow, i > 0 && styles.rowLine]}>
+        <View style={styles.box}>
+          {ROWS.map((row, i) => {
+            const found = hasField(draft, row.field);
+            const isOpen = open === row.field;
+            const src = draft.source[row.field];
+            return (
+              <View key={row.field} style={[styles.row, i > 0 && styles.rowLine]}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${row.label}: ${found ? valueOf(draft, row.field) : 'not found'}. Edit`}
+                  onPress={() => setOpen(isOpen ? null : row.field)}
+                  style={styles.readRow}
+                >
                   {found ? (
                     <View style={styles.dot}>
                       <Icon name="check" size={12} color="#FFFFFF" stroke={3} />
@@ -276,77 +300,45 @@ export default function NewStay() {
                   ) : (
                     <View style={[styles.dot, styles.dotEmpty]} />
                   )}
-                  <Text style={styles.readLabel}>{row.label}</Text>
-                  <Text style={[styles.readValue, !found && styles.readLooking]} numberOfLines={1}>
-                    {found ? valueOf(draft, field) : reading ? row.looking : 'Not found'}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
+                  <View style={styles.readText}>
+                    <Text style={styles.readLabel}>
+                      {row.label}
+                      {found && src !== undefined && pages.length > 1 ? <Text style={styles.readSource}>{`  ·  ${label(src)}`}</Text> : null}
+                    </Text>
+                    <Text style={[styles.readValue, !found && styles.readLooking]} numberOfLines={isOpen ? undefined : 2}>
+                      {found ? valueOf(draft, row.field) : reading ? row.looking : 'Not found · tap to add'}
+                    </Text>
+                  </View>
+                  <View style={[styles.pencil, isOpen && { backgroundColor: VIOLET }]}>
+                    <Icon name={isOpen ? 'check' : 'pencil'} size={14} color={isOpen ? '#FFFFFF' : VIOLET} stroke={2.2} />
+                  </View>
+                </Pressable>
+                {isOpen ? (
+                  <View style={styles.editor}>
+                    <Editor field={row.field} draft={draft} set={set} />
+                  </View>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
 
-          <View style={styles.privacy}>
-            <Icon name="lock" size={14} color={SOFT} stroke={2} />
-            <Text style={styles.privacyText}>
-              {canReadStaysWithAI()
-                ? 'Read on your iPhone with Apple Intelligence. Nothing is uploaded.'
-                : 'Read on your iPhone. Nothing is uploaded.'}
-            </Text>
-          </View>
-        </ScrollView>
-      ) : (
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>Check the details</Text>
-          <Text style={styles.sub}>
-            {editing
-              ? 'Tap the pencil to change anything.'
-              : `Found in ${read} ${read === 1 ? 'screenshot' : 'screenshots'}. Tap the pencil to change anything.`}
+        <View style={styles.privacy}>
+          <Icon name="lock" size={14} color={SOFT} stroke={2} />
+          <Text style={styles.privacyText}>
+            {canReadStaysWithAI() ? 'Read on your iPhone with Apple Intelligence. Nothing is uploaded.' : 'Read on your iPhone. Nothing is uploaded.'}
           </Text>
-          <View style={styles.box}>
-            {ROWS.map((row, i) => {
-              const value = valueOf(draft, row.field);
-              const src = draft.source[row.field];
-              const isOpen = open === row.field;
-              return (
-                <View key={row.field} style={[styles.checkRow, i > 0 && styles.rowLine]}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`${row.label}: ${value ?? 'not found'}. Edit`}
-                    onPress={() => setOpen(isOpen ? null : row.field)}
-                    style={styles.checkMain}
-                  >
-                    <View style={[styles.rowIcon, !value && { backgroundColor: AMBER_TINT }]}>
-                      <Icon name={row.icon} size={17} color={value ? VIOLET : AMBER} stroke={2} />
-                    </View>
-                    <View style={styles.checkText}>
-                      <Text style={styles.checkLabel}>{row.label}</Text>
-                      <Text style={[styles.checkValue, !value && { color: AMBER }]}>{value ?? 'Not found · tap to add'}</Text>
-                    </View>
-                    {value && src !== undefined ? (
-                      <Text style={styles.chip}>{label(src)}</Text>
-                    ) : !value ? (
-                      <Text style={[styles.chip, styles.chipMissing]}>Missing</Text>
-                    ) : null}
-                    <View style={[styles.pencil, isOpen && { backgroundColor: VIOLET }]}>
-                      <Icon name={isOpen ? 'check' : 'pencil'} size={14} color={isOpen ? '#FFFFFF' : VIOLET} stroke={2.2} />
-                    </View>
-                  </Pressable>
-                  {isOpen ? <Editor field={row.field} draft={draft} set={set} /> : null}
-                </View>
-              );
-            })}
-          </View>
-        </ScrollView>
-      )}
+        </View>
+      </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
         <Pressable
           accessibilityRole="button"
-          disabled={step === 'reading' && read === 0}
-          onPress={() => (step === 'reading' ? setStep('check') : save())}
-          style={({ pressed }) => [styles.cta, step === 'reading' && read === 0 && { opacity: 0.4 }, pressed && { opacity: 0.85 }]}
+          disabled={reading}
+          onPress={save}
+          style={({ pressed }) => [styles.cta, reading && { opacity: 0.4 }, pressed && { opacity: 0.85 }]}
         >
-          <Text style={styles.ctaText}>{step === 'reading' ? (reading && read === 0 ? 'Reading…' : 'Next') : editing ? 'Save changes' : 'Save stay'}</Text>
+          <Text style={styles.ctaText}>{reading ? 'Reading…' : editing ? 'Save changes' : 'Save stay'}</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -498,23 +490,21 @@ const styles = StyleSheet.create({
   addText: { fontSize: 13, fontWeight: '600', color: VIOLET },
   box: { backgroundColor: BOX, borderRadius: 20, paddingHorizontal: 16 },
   rowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#D9D9DE' },
-  readRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 54 },
+  row: { paddingVertical: 10 },
+  readRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
+  readText: { flex: 1, gap: 2 },
+  readSource: { fontSize: 12, color: '#9A9AA0' },
+  editor: { gap: 10, paddingTop: 12, paddingLeft: 36 },
+  zoomBadge: { position: 'absolute', right: 8, bottom: 8, width: 26, height: 26, borderRadius: 13, backgroundColor: VIOLET, alignItems: 'center', justifyContent: 'center' },
+  enlargeHint: { fontSize: 13, fontWeight: '500', color: VIOLET },
   dot: { width: 24, height: 24, borderRadius: 12, backgroundColor: VIOLET, alignItems: 'center', justifyContent: 'center' },
   dotEmpty: { backgroundColor: 'transparent', borderWidth: 2, borderColor: '#CFCFD6' },
   spinner: { width: 24, height: 24 },
-  readLabel: { width: 96, fontSize: 15, color: SOFT },
-  readValue: { flex: 1, fontSize: 16, fontWeight: '600', color: INK },
+  readLabel: { fontSize: 13, color: SOFT },
+  readValue: { fontSize: 16, lineHeight: 21, fontWeight: '600', color: INK },
   readLooking: { fontWeight: '400', color: '#9A9AA0' },
   privacy: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   privacyText: { flex: 1, fontSize: 13, lineHeight: 18, color: SOFT },
-  checkRow: { paddingVertical: 14, gap: 12 },
-  checkMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  rowIcon: { width: 38, height: 38, borderRadius: 11, backgroundColor: TINT, alignItems: 'center', justifyContent: 'center' },
-  checkText: { flex: 1, gap: 2 },
-  checkLabel: { fontSize: 13, color: SOFT },
-  checkValue: { fontSize: 17, lineHeight: 22, fontWeight: '600', color: INK },
-  chip: { fontSize: 12, fontWeight: '500', color: SOFT, backgroundColor: '#E9E9EE', borderRadius: 8, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 3 },
-  chipMissing: { color: AMBER, backgroundColor: AMBER_TINT },
   pencil: {
     width: 34,
     height: 34,

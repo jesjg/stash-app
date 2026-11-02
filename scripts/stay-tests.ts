@@ -61,5 +61,12 @@ const shot3 = [
   check('OCR noise is not a host', ai.host === undefined);
   check('copy icon dropped from the address', ai.address === 'Jl. Lantang Hidung, 80227 Sanur, Indonesia');
 }
+{
+  const shot = ['3:31', '39', 'Booking.com', 'Getting into the property', 'The keys are at a reception on location.', 'Pick up the keys at the reception'].join('\n');
+  const p = readStayPage(shot, { doorCode: '39' }, today);
+  check('the battery level is not a house code', p.doorCode === undefined);
+  const lockbox = readStayPage('The lockbox is by the door.\nCode: 7314', { doorCode: '7314' }, today);
+  check('a labelled code is kept', lockbox.doorCode === '7314');
+}
 console.log(bad ? `\n${bad} failed` : '\nAll passed');
 process.exit(bad ? 1 : 0);

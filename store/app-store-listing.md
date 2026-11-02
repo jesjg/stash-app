@@ -37,7 +37,6 @@ Copy each part into App Store Connect → Apps → Stash. Character limits are A
 >
 > TIDY
 > • Past tickets stay until you're done with them. Swipe left to archive. Mark a ticket as used and it tears off like the real thing.
-> • Turn on Sparkle tickets for a little sparkle on every ticket.
 >
 > PRIVATE BY DESIGN
 > • No account, no server, no tracking. Your tickets never leave your iPhone unless you send them.
@@ -77,4 +76,3 @@ Suggested five:
 2. An open ticket with its QR code — "The code, ready to scan."
 3. Adding a ticket from Mail (the New ticket screen) — "Share it. Stash reads it."
 4. A stay card with door code and Wi-Fi — "Check in without the scroll."
-5. Sparkle tickets switched on — "A little sparkle."

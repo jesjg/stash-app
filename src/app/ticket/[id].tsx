@@ -344,7 +344,7 @@ export default function TicketScreen() {
               </View>
             ) : (
               <View style={styles.pageBody}>
-                <TicketCard stub={p.stub} index={p.index} tear={i === at ? tear : undefined} tearing={tearingAt === i} active={i === at}>
+                <TicketCard stub={p.stub} index={p.index} tear={i === at ? tear : undefined} tearing={tearingAt === i}>
                   {p.stub.tickets[p.index] ? (
                     <Pressable
                       accessibilityRole="button"
@@ -383,16 +383,14 @@ function TicketCard({
   children,
   tear,
   tearing,
-  active,
 }: {
   stub: Stub;
   index: number;
   children: React.ReactNode;
   tear?: Animated.Value;
   tearing?: boolean;
-  active?: boolean;
 }) {
-  return <WalletTicket stub={stub} index={index} tear={tear} tearing={tearing} active={active} code={children ?? undefined} />;
+  return <WalletTicket stub={stub} index={index} tear={tear} tearing={tearing} code={children ?? undefined} />;
 }
 
 const styles = StyleSheet.create({

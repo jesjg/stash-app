@@ -4,11 +4,10 @@ import Svg, { Path } from 'react-native-svg';
 import { fmt, relativeDay } from '../lib/dates';
 import { isJourney, ticketType } from '../lib/ticketTypes';
 import type { Detail, Stub, Ticket } from '../lib/types';
-import { useStore } from '../lib/store';
 import { CodeView } from './CodeView';
-import { Sparkles } from './Sparkles';
 import { Icon } from './Icon';
 import { Logo } from './Logo';
+import { LogoPatternDef } from './LogoPattern';
 
 // Ticket card spec: system font (no fontFamily), white text on the type colour, black on white.
 const INK = '#111111';
@@ -38,8 +37,6 @@ type Props = {
   tear?: Animated.Value;
   /** Split the card in two for the tear (set just before `tear` starts moving). */
   tearing?: boolean;
-  /** On screen: sparkles twinkle only on the card you're looking at. */
-  active?: boolean;
 };
 
 /** Size to give CodeView so the code and its white margin fill a `box`-sized square. */
@@ -128,12 +125,10 @@ function headerShape(w: number, radius: number, py: number, r: number) {
 }
 
 /** The ticket card: type-coloured header, perforation, white body with the code and details. */
-export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, tearing, active = true }: Props) {
+export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, tearing }: Props) {
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [headH, setHeadH] = useState(0);
-  const sparkle = !!useStore((s) => s.settings.sparkles);
-  // Header text gets a faint shadow over the sparkles so it stays crisp.
-  const ts = sparkle ? styles.shadow : null;
+  const patternId = `stash-${`${stub.id}-${index}-${compact ? 'c' : 'f'}`.replace(/[^A-Za-z0-9_-]/g, '')}`;
   const type = ticketType(stub.kind);
   const ticket = stub.tickets[index];
   const company = stub.details?.find((d) => d.label === 'Company')?.value;
@@ -168,14 +163,11 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, te
       {drawn && (
         <Svg width={size.w} height={size.h} style={StyleSheet.absoluteFill}>
           <Path d={outline(size.w, size.h, radius, py, notch / 2)} fill={WHITE} />
+          <LogoPatternDef id={patternId} color={type.color} />
           <Path d={headerShape(size.w, radius, py, notch / 2)} fill={type.color} />
+          <Path d={headerShape(size.w, radius, py, notch / 2)} fill={`url(#${patternId})`} />
           <Path d={outline(size.w, size.h, radius, py, notch / 2)} fill="none" stroke={LINE} strokeWidth={1} />
         </Svg>
-      )}
-      {drawn && sparkle && (
-        <View pointerEvents="none" style={[styles.sparkleArea, { height: headH, borderTopLeftRadius: radius, borderTopRightRadius: radius }]}>
-          <Sparkles width={size.w} height={headH} kind={stub.kind} seed={`${stub.id}-${index}`} animate={active && !tearing} />
-        </View>
       )}
       <View
         onLayout={(e) => setHeadH(e.nativeEvent.layout.height)}
@@ -192,26 +184,26 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, te
               <Icon name={type.icon} size={compact ? 18 : 20} color={type.color} stroke={2} />
             </View>
             <View style={styles.shrink}>
-              <Text style={[styles.typeLabel, ts, compact && styles.small]}>{type.label}</Text>
+              <Text style={[styles.typeLabel, compact && styles.small]}>{type.label}</Text>
               {!compact && operator ? (
-                <Text style={[styles.headSub, ts]} numberOfLines={1}>
+                <Text style={styles.headSub} numberOfLines={1}>
                   {operator}
                 </Text>
               ) : null}
             </View>
           </View>
           {compact ? (
-            <Text style={[styles.typeLabel, ts, styles.small]}>{`${day} ${date}`.toUpperCase()}</Text>
+            <Text style={[styles.typeLabel, styles.small]}>{`${day} ${date}`.toUpperCase()}</Text>
           ) : (
             <View style={styles.when}>
-              <Text style={[styles.typeLabel, ts]}>{day}</Text>
-              <Text style={[styles.date, ts]}>{date}</Text>
+              <Text style={styles.typeLabel}>{day}</Text>
+              <Text style={styles.date}>{date}</Text>
             </View>
           )}
         </View>
         {route ? (
           <View style={styles.route}>
-            <Text style={[styles.code, ts]}>{route[0]}</Text>
+            <Text style={styles.code}>{route[0]}</Text>
             <View style={styles.flightPath}>
               <View style={styles.pathDash} />
               <View style={stub.kind === 'flight' && styles.tilt}>
@@ -219,15 +211,15 @@ export function WalletTicket({ stub, index = 0, compact, onPress, code, tear, te
               </View>
               <View style={styles.pathDash} />
             </View>
-            <Text style={[styles.code, ts]}>{route[1]}</Text>
+            <Text style={styles.code}>{route[1]}</Text>
           </View>
         ) : (
           <View style={styles.titleBox}>
-            <Text style={[styles.title, ts]} numberOfLines={compact ? 1 : 2}>
+            <Text style={styles.title} numberOfLines={compact ? 1 : 2}>
               {stub.title}
             </Text>
             {subtitle || (compact && operator) ? (
-              <Text style={[styles.headSub, ts]} numberOfLines={1}>
+              <Text style={styles.headSub} numberOfLines={1}>
                 {compact && operator ? operator : subtitle}
               </Text>
             ) : null}
@@ -352,9 +344,6 @@ const styles = StyleSheet.create({
   // No background here, so iOS draws the shadow from the card's drawn shape, notches and all.
   lift: { shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 12 } },
   piece: { position: 'absolute', left: 0, right: 0, overflow: 'hidden' },
-  // Sparkles sit over the header colour and under its text, and never reach the code below.
-  sparkleArea: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden' },
-  shadow: { textShadowColor: 'rgba(0,0,0,0.2)', textShadowRadius: 3, textShadowOffset: { width: 0, height: 1 } },
   card: {},
   cardPlain: { backgroundColor: WHITE, overflow: 'hidden' },
   head: { overflow: 'hidden' },

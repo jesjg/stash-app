@@ -97,8 +97,6 @@ export type Settings = {
   screenshots?: 'on' | 'off';
   /** Pin today's ticket to the lock screen as a Live Activity. */
   lockScreen: boolean;
-  /** Sparkles on every ticket's coloured header. Off unless the person turns it on. */
-  sparkles?: boolean;
   /** Use Apple Intelligence (on the phone) to help read tickets. undefined = on. */
   smartReading?: boolean;
   /** The how-it-works slides have been shown. */

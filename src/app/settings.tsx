@@ -31,7 +31,6 @@ export default function Settings() {
     }, []),
   );
   const lockScreen = useStore((s) => s.settings.lockScreen);
-  const sparkles = useStore((s) => s.settings.sparkles);
   const shots = useStore((s) => s.settings.screenshots);
   const smartReading = useStore((s) => s.settings.smartReading !== false);
   const showAI = ai === 'available' || ai === 'notEnabled' || ai === 'notReady';
@@ -44,17 +43,6 @@ export default function Settings() {
         <RoundButton label="Close" onPress={() => router.back()} size={40} color={colors.paper}>
           <Icon name="close" size={18} color={colors.ink} />
         </RoundButton>
-      </View>
-
-      <View style={styles.block}>
-        <Text style={label}>Appearance</Text>
-        <View style={styles.row}>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={styles.rowText}>Sparkle tickets</Text>
-            <Text style={styles.note}>A little sparkle on every ticket.</Text>
-          </View>
-          <Toggle value={!!sparkles} onValueChange={(v) => setSettings({ sparkles: v })} accessibilityLabel="Sparkle tickets" />
-        </View>
       </View>
 
       {showAI && (

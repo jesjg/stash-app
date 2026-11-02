@@ -94,7 +94,7 @@ export async function load() {
       const data = JSON.parse(await file.text());
       stubs = Array.isArray(data.stubs) ? data.stubs : [];
       // The app colour and background photo settings were removed: drop them (and the photo).
-      const { themePhoto, accent: _accent, ...saved } = data.settings ?? {};
+      const { themePhoto, accent: _accent, sparkles: _sparkles, ...saved } = data.settings ?? {};
       settings = { ...DEFAULT_SETTINGS, ...saved };
       deleteThemePhoto(themePhoto);
       seenShots = Array.isArray(data.seenShots) ? data.seenShots : [];

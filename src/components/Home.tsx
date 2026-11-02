@@ -133,7 +133,7 @@ export function Home() {
             >
               {next.map((s, i) => (
                 <View key={s.id} style={{ width: cardW }}>
-                  <NextCard stub={s} active={i === Math.min(slide, next.length - 1)} />
+                  <NextCard stub={s} />
                 </View>
               ))}
             </ScrollView>
@@ -249,11 +249,10 @@ export function Home() {
 }
 
 
-function NextCard({ stub, active }: { stub: Stub; active: boolean }) {
+function NextCard({ stub }: { stub: Stub }) {
   return (
     <WalletTicket
       compact
-      active={active}
       stub={stub}
       onPress={() => openStub(stub.id)}
     />

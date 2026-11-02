@@ -147,7 +147,13 @@ function findAddress(lines: string[]): string | undefined {
       // "The address is 22 Harbour Road, Lefkada 311 00." is complete on its own.
       if (/\d/.test(inline) && /,/.test(inline)) return inline;
     }
-    for (const next of lines.slice(i + 1, i + 4)) {
+    // A map can sit between the label and the address ("Francesco's Pizza", "Google Maps"): skip to the address line.
+    const ahead = lines.slice(i + 1, i + 8).map((l) => l.replace(/\t/g, ' ').trim());
+    const real = ahead.findIndex((l) => /,/.test(l) && (POSTCODE.test(l) || COUNTRY.test(l) || /,\s*$/.test(l)) && !SENTENCE_WORDS.test(l));
+    // Only skip lines that can't be part of the address (no commas): map labels, not "Jalan Gamat Bay ,Desa Sakti".
+    const skip = real > 0 && ahead.slice(0, real).every((l) => !/,/.test(l)) ? real : 0;
+    const from = i + 1 + (inline ? 0 : skip);
+    for (const next of lines.slice(from, from + 3)) {
       const n = next.replace(/\t/g, ' ').trim();
       if (!n || UI_LINE.test(n)) continue;
       const again = n.match(label);

@@ -193,11 +193,27 @@ export function addStayPage(draft: StayDraft, page: StayValues, index: number): 
     }
     if (used && next.source[field] === undefined) next.source[field] = index;
   });
+  // Airbnb shows a short address first ("Jl Pari Jl Manta") and the full one under Getting there.
+  if (page.address && next.address && fuller(page.address, next.address)) {
+    next.address = page.address;
+    next.source.address = index;
+  }
   if (next.checkIn && next.checkOut && next.checkOut <= next.checkIn) {
     next.checkOut = undefined;
     next.checkOutTime = undefined;
   }
   return next;
+}
+
+const words = (s: string) => s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+
+/** True when `a` is a fuller version of the same address as `b`. */
+export function fuller(a: string, b: string): boolean {
+  if (a.length <= b.length) return false;
+  const have = new Set(words(a));
+  const same = words(b).every((w) => have.has(w));
+  const postcode = (s: string) => /\b\d{4,6}\b/.test(s);
+  return same || (postcode(a) && !postcode(b) && a.split(',').length > b.split(',').length);
 }
 
 /** True once the row has something in it. */

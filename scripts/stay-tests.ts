@@ -84,5 +84,19 @@ const shot3 = [
   check('Marilea: the name, not its second line', d.place === 'Marilea Bamboo Villas Concept');
   check('Marilea: the whole address', d.address === 'Jalan Gamat Bay, Desa Sakti Kabupaten, Klungkung Nusa Penida, 80771 Nusa Penida, Indonesia');
 }
+{
+  // Airbnb: the trip screen has the short address, Getting there has the full one.
+  const trip = ['In 2 weeks', 'Home in Gili Trawangan', 'Hosted by Made', 'Check-in\tCheckout', 'Tue 17 Nov\tThu 19 Nov', '14:00\t11:00', 'Getting there', 'Jl Pari Jl Manta', 'House rules and requests'].join('\n');
+  const there = ['Getting there', 'Francesco\'s Pizza', 'Google Maps', 'Gili Boho Villas, Jl Pari Jl Manta, Gili Trawangan,', 'Nusa Tenggara Bar 83356, Indonesia', 'Directions from your host', 'The way to our villa: you can either take a horse cart'].join('\n');
+  let d = emptyStay();
+  d = addStayPage(d, readStayPage(trip, { address: 'Jl Pari Jl Manta' }, today), 0);
+  d = addStayPage(d, readStayPage(there, { address: 'Gili Boho Villas, Jl Pari Jl Manta, Gili Trawangan, Nusa Tenggara Bar 83356, Indonesia' }, today), 1);
+  check('Airbnb: the full address replaces the short one', d.address === 'Gili Boho Villas, Jl Pari Jl Manta, Gili Trawangan, Nusa Tenggara Bar 83356, Indonesia' && d.source.address === 1);
+  let r = emptyStay();
+  r = addStayPage(r, readStayPage(trip, null, today), 0);
+  r = addStayPage(r, readStayPage(there, null, today), 1);
+  check('Airbnb without Apple Intelligence: full address too', r.address?.startsWith('Gili Boho Villas') === true && r.address.endsWith('Indonesia'));
+  check('a different, shorter address does not replace it', addStayPage(d, { address: 'Sanur' }, 2).address === d.address);
+}
 console.log(bad ? `\n${bad} failed` : '\nAll passed');
 process.exit(bad ? 1 : 0);

@@ -38,12 +38,12 @@ export function useAddTicket() {
   const photos = () => run(pickPhotos);
 
   /** Pick from a short menu: iOS action sheet, or an alert elsewhere. */
-  function menu(title: string, message: string | undefined, options: string[], handle: (choice: string) => void) {
+  function menu(title: string | undefined, message: string | undefined, options: string[], handle: (choice: string) => void) {
     const all = [...options, 'Cancel'];
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions({ options: all, cancelButtonIndex: all.length - 1, title, message }, (i) => i < options.length && handle(options[i]));
     } else {
-      Alert.alert(title, message, [...options.map((text) => ({ text, onPress: () => handle(text) })), { text: 'Cancel', style: 'cancel' as const }]);
+      Alert.alert(title ?? '', message, [...options.map((text) => ({ text, onPress: () => handle(text) })), { text: 'Cancel', style: 'cancel' as const }]);
     }
   }
 
@@ -63,7 +63,7 @@ export function useAddTicket() {
 
   /** The + button: a ticket or a stay. */
   function start() {
-    menu('Add', undefined, ['Add ticket', 'Add stay'], (c) => (c === 'Add stay' ? addStay() : open()));
+    menu(undefined, undefined, ['Add ticket', 'Add stay'], (c) => (c === 'Add stay' ? addStay() : open()));
   }
 
   function open() {

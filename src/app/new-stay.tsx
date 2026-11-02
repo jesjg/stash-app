@@ -44,6 +44,7 @@ type Page = StayPage & { done: boolean };
 const ROWS: { field: StayField; label: string; icon: IconName; looking: string }[] = [
   { field: 'place', label: 'Place', icon: 'home', looking: 'Looking…' },
   { field: 'host', label: 'Host', icon: 'user', looking: 'Looking…' },
+  { field: 'phone', label: 'Contact number', icon: 'phone', looking: 'Looking…' },
   { field: 'dates', label: 'Dates', icon: 'calendar', looking: 'Looking for dates…' },
   { field: 'address', label: 'Address', icon: 'pin', looking: 'Looking for the address…' },
   { field: 'gettingIn', label: 'Getting in', icon: 'key', looking: 'Looking for directions…' },
@@ -51,7 +52,10 @@ const ROWS: { field: StayField; label: string; icon: IconName; looking: string }
   { field: 'arrival', label: 'Arriving', icon: 'steps', looking: 'Looking for directions…' },
 ];
 
-const shortDay = (d: string) => `${fmt.dow(d)} ${Number(fmt.dayNum(d))} ${fmt.mon(d)}`;
+const shortDay = (d: string) => {
+  const dow = fmt.dow(d);
+  return `${dow.charAt(0)}${dow.slice(1).toLowerCase()} ${Number(fmt.dayNum(d))} ${fmt.mon(d)}`;
+};
 
 /** What a row says, in one line. */
 function valueOf(d: StayDraft, field: StayField): string | undefined {
@@ -69,9 +73,9 @@ function valueOf(d: StayDraft, field: StayField): string | undefined {
     case 'address':
       return d.address;
     case 'gettingIn':
-      return [d.gettingIn, d.doorCode ? `code ${d.doorCode}` : undefined, !d.gettingIn && !d.doorCode ? d.phone : undefined]
-        .filter(Boolean)
-        .join(' · ') || undefined;
+      return [d.gettingIn, d.doorCode ? `code ${d.doorCode}` : undefined].filter(Boolean).join(' · ') || undefined;
+    case 'phone':
+      return d.phone;
     case 'wifi':
       return [d.wifiName, d.wifiPassword].filter(Boolean).join(' · ') || undefined;
     case 'arrival':
@@ -399,6 +403,8 @@ function Editor({ field, draft, set }: { field: StayField; draft: StayDraft; set
       return <Field label="Name" value={draft.place} onChange={(v) => set({ place: opt(v) })} placeholder="Home in Gili T" />;
     case 'host':
       return <Field label="Host" value={draft.host} onChange={(v) => set({ host: opt(v) })} placeholder="Made" />;
+    case 'phone':
+      return <Field label="Contact number" value={draft.phone} onChange={(v) => set({ phone: opt(v) })} placeholder="+62 813 3067 0784" keyboard="phone-pad" />;
     case 'address':
       return <Field label="Address" value={draft.address} onChange={(v) => set({ address: opt(v) })} placeholder="Street, town" multiline />;
     case 'wifi':
@@ -413,7 +419,6 @@ function Editor({ field, draft, set }: { field: StayField; draft: StayDraft; set
         <>
           <Field label="How you get in" value={draft.gettingIn} onChange={(v) => set({ gettingIn: opt(v) })} placeholder="Lockbox by the door" />
           <Field label="House code" value={draft.doorCode} onChange={(v) => set({ doorCode: opt(v) })} placeholder="7314" />
-          <Field label="Host's phone" value={draft.phone} onChange={(v) => set({ phone: opt(v) })} keyboard="phone-pad" />
         </>
       );
     case 'arrival':

@@ -26,7 +26,7 @@ export type AIStayAnswer = {
 };
 
 /** The rows on the Check the details screen. */
-export type StayField = 'place' | 'host' | 'dates' | 'address' | 'gettingIn' | 'wifi' | 'arrival';
+export type StayField = 'place' | 'host' | 'phone' | 'dates' | 'address' | 'gettingIn' | 'wifi' | 'arrival';
 
 export type StayValues = {
   place?: string;
@@ -88,6 +88,33 @@ export function codeOnPage(code: string, text: string): boolean {
   return lines.some((l, i) => l.includes(want) && (WORD.test(raw[i]) || (i > 0 && WORD.test(raw[i - 1]))));
 }
 
+/** Words that say how you get in. "Avoid clicking on payment links" isn't that. */
+const ACCESS = /\b(keys?|code|lock|door|reception|front desk|host|meets?|check[\s-]?in|box|gate|self|staff|collect|pick(?:\s|-)?up|entry|access|lobby|concierge)\b/i;
+
+/** Booking.com and others: "Getting into the property" / "The keys are at a reception on location." */
+function findGettingIn(text: string): string | undefined {
+  const lines = text.split(/\r?\n/).map((l) => l.replace(/\t/g, ' ').trim()).filter(Boolean);
+  const label = /^(getting into the (property|accommodation)|how to get in|getting in|check-in method|self check-in|key collection|collecting (the )?keys?)\b:?\s*(.*)$/i;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(label);
+    if (!m) continue;
+    const v = (m[4] || lines[i + 1] || '').trim();
+    if (v.length >= 6 && v.length <= 140 && ACCESS.test(v) && !/^(view|show|see|contact)\b/i.test(v)) return v;
+  }
+  return undefined;
+}
+
+/** The guest's own name ("Guests" / "Jes Jones Gardner") is never the host. */
+function guestNames(text: string): string[] {
+  const lines = text.split(/\r?\n/).map((l) => l.replace(/\t/g, ' ').trim()).filter(Boolean);
+  const out: string[] = [];
+  lines.forEach((l, i) => {
+    const m = l.match(/^(guests?|lead guest|guest name|booked by|booker|traveller|traveler|name)\b:?\s*(.*)$/i);
+    if (m) out.push((m[2] || lines[i + 1] || '').toLowerCase());
+  });
+  return out.filter(Boolean);
+}
+
 /** A host is a name or two: "Made", "Ana & Luis". Not OCR noise. */
 const NAME = /^\p{Lu}[\p{L}'’.-]*(?:\s+(?:&|and|\p{Lu}[\p{L}'’.-]*)){0,3}$/u;
 
@@ -112,14 +139,16 @@ export function readStayPage(text: string, ai: AIStayAnswer | null, today = new 
 
   const out: StayValues = {
     place: place && titleOnTicket(place, text) ? place : rules.title,
-    host: host && NAME.test(host) && printed(host, text) ? host : r.host && NAME.test(r.host) ? r.host : undefined,
+    host: [host && printed(host, text) ? host : undefined, r.host].find(
+      (h) => h && NAME.test(h) && !guestNames(text).some((g) => g.includes(h.toLowerCase())),
+    ),
     checkIn: inDay && dateOnTicket(inDay, text) ? inDay : rules.date,
     checkInTime: inTime && timeOnTicket(inTime, text) ? inTime : rules.time,
     checkOut: outDay && dateOnTicket(outDay, text) ? outDay : r.checkOutDate,
     checkOutTime: outTime && timeOnTicket(outTime, text) ? outTime : r.checkOutTime,
     address: address && titleOnTicket(address, text) ? address : r.address,
     // A summary in the model's words: most of its words must still be on the page.
-    gettingIn: gettingIn && titleOnTicket(gettingIn, text, 0.5) ? gettingIn : undefined,
+    gettingIn: (gettingIn && ACCESS.test(gettingIn) && titleOnTicket(gettingIn, text, 0.5) ? gettingIn : undefined) ?? findGettingIn(text),
     doorCode: code && codeOnPage(code, text) ? code : r.doorCode,
     wifiName: wifiName && printed(wifiName, text) ? wifiName : r.wifiName,
     wifiPassword: wifiPassword && printed(wifiPassword, text) ? wifiPassword : r.wifiPassword,
@@ -143,7 +172,8 @@ const FIELD_KEYS: Record<StayField, (keyof StayValues)[]> = {
   host: ['host'],
   dates: ['checkIn', 'checkInTime', 'checkOut', 'checkOutTime'],
   address: ['address'],
-  gettingIn: ['gettingIn', 'doorCode', 'phone'],
+  gettingIn: ['gettingIn', 'doorCode'],
+  phone: ['phone'],
   wifi: ['wifiName', 'wifiPassword'],
   arrival: ['arrival'],
 };

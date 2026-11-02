@@ -159,9 +159,13 @@ function findAddress(lines: string[]): string | undefined {
       if (parts.length && !(POSTCODE.test(n) || COUNTRY.test(n) || n.length < 30)) break;
       if (/^(check|wi-?fi|host|house|your|confirmation|cancell|phone|tel|email|contact|booking|reservation|pin|property|view|change)\b/i.test(n)) break;
       parts.push(n);
-      if (parts.length >= 2 || COUNTRY.test(n)) break;
+      // A line ending in a comma carries on: "…, 80771 Nusa Penida," / "Indonesia".
+      if ((parts.length >= 2 && !/,$/.test(n)) || COUNTRY.test(n) || parts.length >= 4) break;
     }
-    const a = parts.join(', ').replace(/,\s*,/g, ',');
+    const a = parts
+      .join(', ')
+      .replace(/\s*,(\s*,)*\s*/g, ', ')
+      .replace(/[,\s]+$/, '');
     if (a.length >= 6) return a;
   }
   // No label: the first line that reads like a street address, plus a postcode/country line after it.
@@ -293,7 +297,10 @@ function findTitle(lines: string[], address: string | undefined, today: Date, av
     const h = l.split(RANGE);
     return h.length === 2 && !!firstDate(h[0], today) && !!firstDate(h[1], today);
   });
-  const name = range > 0 ? lines[range - 1].replace(/\t/g, ' ').trim() : '';
+  // A long name wraps: "Marilea Bamboo Villas Concept ," / "Private pool, seaview, Adults only".
+  let top = range - 1;
+  while (top > 0 && /,\s*$/.test(lines[top - 1])) top--;
+  const name = top >= 0 && range > 0 ? lines[top].replace(/\t/g, ' ').replace(/\s*,\s*$/, '').trim() : '';
   if (name && name.length <= 45 && !/\d/.test(name) && !/[.!?:,]$/.test(name) && !SENTENCE_WORDS.test(name) && !UI_LINE.test(name)) return name;
   for (const l of lines) {
     const m = l

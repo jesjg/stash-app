@@ -14,7 +14,7 @@ export type IncomingFile = {
   mimeType?: string | null;
 };
 
-function extensionFor(file: IncomingFile): string {
+export function extensionFor(file: IncomingFile): string {
   const fromName = file.name?.match(/\.([a-z0-9]{2,5})$/i)?.[1];
   if (fromName) return fromName.toLowerCase();
   const mime = file.mimeType ?? '';

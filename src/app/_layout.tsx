@@ -82,6 +82,7 @@ export default function RootLayout() {
         <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
         <Stack.Screen name="handle-share" options={{ animation: 'fade' }} />
         <Stack.Screen name="paste" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="new-stay" options={{ presentation: 'modal' }} />
         <Stack.Screen name="mail-help" options={{ presentation: 'modal' }} />
         <Stack.Screen name="web" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="import" options={{ animation: 'fade' }} />

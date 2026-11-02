@@ -93,7 +93,7 @@ export function Home() {
               <RoundButton label="Settings" color={SOFT_BG_DARK} onPress={() => router.push('/settings')} size={44}>
                 <Icon name="settings" color={INK} size={20} stroke={2} />
               </RoundButton>
-              <RoundButton label="Add ticket" color={VIOLET} onPress={add.open} size={44}>
+              <RoundButton label="Add a ticket or stay" color={VIOLET} onPress={add.start} size={44}>
                 {add.busy ? <ActivityIndicator color="#FFFFFF" /> : <Icon name="plus" color="#FFFFFF" size={20} stroke={2.5} />}
               </RoundButton>
             </View>
@@ -106,7 +106,7 @@ export function Home() {
 
         {empty && (
           <EmptyState
-            onAdd={add.open}
+            onAdd={add.start}
             onSample={() => {
               const s = addSampleTicket();
               router.push({ pathname: '/ticket/[id]', params: { id: s.id } });

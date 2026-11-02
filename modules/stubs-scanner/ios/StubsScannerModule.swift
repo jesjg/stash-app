@@ -61,6 +61,11 @@ public class StubsScannerModule: Module {
       await TicketAIBridge.read(text: text, today: today)
     }
 
+    /// Reads a booking or check-in screenshot's text with the on-device model. Resolves with { error } when it can't.
+    AsyncFunction("readStayAsync") { (text: String, today: String) async -> [String: Any] in
+      await TicketAIBridge.readStay(text: text, today: today)
+    }
+
     /// Opens Apple's document camera (edge detection, straightening) for paper tickets.
     /// Resolves with the scanned pages as JPEG file URIs, or [] if the person cancels.
     AsyncFunction("scanPaperAsync") { (outDir: String, promise: Promise) in

@@ -38,7 +38,7 @@ export function printed(value: string, text: string): boolean {
 }
 
 /** True if most of the title's words are on the ticket (the arrow and joining words don't count). */
-function titleOnTicket(title: string, text: string): boolean {
+export function titleOnTicket(title: string, text: string, share = 0.75): boolean {
   const words = title
     .split(/[\s→\-–—:,/|()]+/)
     .map(bare)
@@ -46,13 +46,13 @@ function titleOnTicket(title: string, text: string): boolean {
   if (!words.length) return false;
   const hay = bare(text);
   const hits = words.filter((w) => hay.includes(w)).length;
-  return hits / words.length >= 0.75;
+  return hits / words.length >= share;
 }
 
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
 /** True if the date can be seen on the ticket in some common form. */
-function dateOnTicket(date: string, text: string): boolean {
+export function dateOnTicket(date: string, text: string): boolean {
   const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return false;
   const [, y, mo, d] = m;
@@ -70,7 +70,7 @@ function dateOnTicket(date: string, text: string): boolean {
 }
 
 /** True if the time is printed: 14:05, 14.05, 1405, 2:05 pm. */
-function timeOnTicket(time: string, text: string): boolean {
+export function timeOnTicket(time: string, text: string): boolean {
   const m = time.match(/^(\d{1,2}):(\d{2})$/);
   if (!m) return false;
   const h = Number(m[1]);

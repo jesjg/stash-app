@@ -154,7 +154,10 @@ export default function TicketScreen() {
           ]),
       {
         label: 'Edit details',
-        run: () => router.push({ pathname: '/edit/[id]', params: { id: stub.id } }),
+        run: () =>
+          stub.kind === 'stay'
+            ? router.push({ pathname: '/new-stay', params: { edit: stub.id } })
+            : router.push({ pathname: '/edit/[id]', params: { id: stub.id } }),
       },
       {
         label: 'Delete',

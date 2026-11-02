@@ -24,7 +24,7 @@ import { ticketType } from '../lib/ticketTypes';
 
 export type StubFields = Pick<Stub, 'title' | 'kind' | 'date' | 'time' | 'stay' | 'details'>;
 
-const STAY_FIELDS: { key: keyof Stay; label: string; placeholder: string; multiline?: boolean; mono?: boolean; keyboard?: 'phone-pad' }[] = [
+const STAY_FIELDS: { key: Exclude<keyof Stay, 'arrival'>; label: string; placeholder: string; multiline?: boolean; mono?: boolean; keyboard?: 'phone-pad' }[] = [
   { key: 'address', label: 'Address', placeholder: 'Street, town, postcode', multiline: true },
   { key: 'doorCode', label: 'Door / key code', placeholder: 'e.g. 4821', mono: true },
   { key: 'wifiName', label: 'Wi-Fi name', placeholder: 'Network name', mono: true },
@@ -73,7 +73,7 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
   const [stay, setStay] = useState<Stay>(stub.stay ?? {});
   const [company, setCompany] = useState(stub.details?.find((d) => d.label === 'Company')?.value ?? '');
   const isStay = kind === 'stay';
-  const setStayField = (key: keyof Stay, value: string | undefined) => setStay((s) => ({ ...s, [key]: value || undefined }));
+  const setStayField = (key: Exclude<keyof Stay, 'arrival'>, value: string | undefined) => setStay((s) => ({ ...s, [key]: value || undefined }));
   const onOutDate = (_: DateTimePickerEvent, d?: Date) => d && setStayField('checkOutDate', dayKey(d));
   const onOutTime = (_: DateTimePickerEvent, d?: Date) => d && setStayField('checkOutTime', timeKey(d));
   const first = stub.tickets[0];

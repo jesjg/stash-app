@@ -29,6 +29,23 @@ export type AIRead = {
   details?: { label: string; value: string }[];
 };
 
+/** What Apple's on-device model read off a booking or check-in screenshot. Every field may be empty. */
+export type AIStayRead = {
+  place?: string;
+  host?: string;
+  checkInDate?: string;
+  checkInTime?: string;
+  checkOutDate?: string;
+  checkOutTime?: string;
+  address?: string;
+  gettingIn?: string;
+  doorCode?: string;
+  wifiName?: string;
+  wifiPassword?: string;
+  phone?: string;
+  arrival?: string[];
+};
+
 type NativeScanner = {
   scanFileAsync(uri: string, outDir: string): Promise<ScannedPage[]>;
   /** Newer builds only: Apple's document camera for paper tickets. */
@@ -36,6 +53,8 @@ type NativeScanner = {
   /** 1.1 builds and later: Apple Intelligence, on the phone. */
   aiStatus?(): string;
   readTicketAsync?(text: string, today: string): Promise<AIRead & { error?: string }>;
+  /** Builds with stays (1.0 resubmission) and later. */
+  readStayAsync?(text: string, today: string): Promise<AIStayRead & { error?: string }>;
 };
 
 // Optional so the JS still loads in Expo Go; scanning needs a development build.
@@ -86,3 +105,20 @@ export async function readTicketWithAI(text: string, today: string): Promise<AIR
 
 /** How long to wait for Apple Intelligence before going without it. */
 const AI_TIMEOUT_MS = 6000;
+
+/** True when this build and iPhone can read bookings with Apple Intelligence. */
+export function canReadStaysWithAI(): boolean {
+  return typeof native?.readStayAsync === 'function' && aiStatus() === 'available';
+}
+
+/** Reads booking text with Apple's on-device model. null when it isn't available, fails or takes too long. */
+export async function readStayWithAI(text: string, today: string, timeoutMs = 15000): Promise<AIStayRead | null> {
+  if (!native?.readStayAsync || !canReadStaysWithAI() || !text.trim()) return null;
+  try {
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+    const r = await Promise.race([native.readStayAsync(text, today), timeout]);
+    return r && !r.error ? r : null;
+  } catch {
+    return null;
+  }
+}

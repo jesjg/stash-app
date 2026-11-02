@@ -15,14 +15,14 @@ Copy each part into App Store Connect → Apps → Stash. Character limits are A
 
 **Promotional text** (170)
 
-> Ferries, trains, flights, gigs, visas and check-ins, filed by date. Share a ticket to Stash and it's ready on the day, code first, at full brightness.
+> Ferries, trains, flights, gigs, visas and stays, filed by date. Share a ticket to Stash and it's ready on the day, code first, at full brightness.
 
 **Description** (4,000)
 
-> Stash keeps the tickets that won't go into Apple Wallet: ferry tickets, train e-tickets, gig and theatre tickets, activity vouchers, boarding passes, visas and hotel check-ins. All in one place, filed by date, ready when you are.
+> Stash keeps the tickets that won't go into Apple Wallet: ferry tickets, train e-tickets, gig and theatre tickets, activity vouchers, boarding passes and visas, plus your Airbnb and hotel stays. All in one place, filed by date, ready when you are.
 >
 > ADD A TICKET IN SECONDS
-> • In Mail, tap the ticket and Share → Stash. PDFs, screenshots and photos of paper tickets all work.
+> • In Mail, tap the ticket and Share → Stash. Or tap + → Add ticket for a screenshot, a PDF or a paper ticket.
 > • Stash finds the QR code, Aztec code or barcode on every page, and reads the date, time, seat, gate, platform, booking reference and passenger names for you.
 > • Several passengers on one booking? Each gets their own ticket. Swipe between them at the gate.
 > • On iPhones with Apple Intelligence, it helps read the trickiest tickets too, right on your iPhone.
@@ -30,10 +30,12 @@ Copy each part into App Store Connect → Apps → Stash. Character limits are A
 > READY ON THE DAY
 > • A reminder in the morning, or two hours before if there's a time. Tap it and the code is on screen at full brightness.
 > • Your next ticket on the lock screen and Dynamic Island, and a home screen widget counting down.
-> • Twelve ticket types, each with its own colour and icon: flight, train, ferry, bus, car, stay, gig, event, activity, visa, medical and other.
+> • Eleven ticket types, each with its own colour and icon: flight, train, ferry, bus, car, gig, event, activity, visa, medical and other.
 >
 > STAYS, SORTED
-> • Add screenshots of the check-in screens. Stash pulls out the address, check-in and check-out times, door code and Wi-Fi into one card, with directions and a call button.
+> • Tap + → Add stay and pick screenshots or a PDF from Airbnb, Booking.com or your host's messages.
+> • Stash reads the place, dates and nights, address, how you get in, house code, Wi-Fi, arrival directions and the contact number. Tap the pencil to change anything.
+> • One stay page with directions, copy address, call or message the host, the house code and your screenshots.
 >
 > TIDY
 > • Past tickets stay until you're done with them. Swipe left to archive. Mark a ticket as used and it tears off like the real thing.
@@ -46,7 +48,7 @@ Copy each part into App Store Connect → Apps → Stash. Character limits are A
 
 **Keywords** (100, commas, no spaces after them)
 
-> tickets,boarding pass,ferry,train,e-ticket,QR code,gig,concert,event,travel,visa,check-in,reminder
+> tickets,boarding pass,ferry,train,QR code,gig,event,travel,visa,airbnb,stay,check-in,reminder
 
 **Support URL:** https://jesjg.github.io/stash-app/support/
 **Marketing URL:** (leave empty)
@@ -61,9 +63,11 @@ Choose **"Data Not Collected"**. Stash keeps everything on the phone and has no 
 
 > Stash has no account or sign-in.
 >
-> To see a ticket without importing one: on first launch, skip the intro, then tap "Try a sample ticket" on the empty home screen. It opens a sample event with two QR codes (swipe between them), and shows the ticket detail screen, "Mark as used" (tears the ticket into Archive) and the ⋯ menu.
+> To see a ticket without importing one: on first launch, skip the intro, then tap "Try a sample ticket" on the empty home screen. It opens a sample show with two QR codes (swipe between them), and shows the ticket detail screen, "Mark as used" (tears the ticket into Archive) and the ⋯ menu.
 >
-> To import a real ticket: Share a PDF or screenshot from Mail, Files or Photos to Stash, or tap + in the app. Codes and text are read on the device with PDFKit and Vision; nothing is uploaded.
+> To import a real ticket: Share a PDF or screenshot from Mail, Files or Photos to Stash, or tap + → Add ticket. To add a stay: tap + → Add stay and pick screenshots of a booking (any Airbnb or Booking.com confirmation screen works); the details fill in on one page and can be edited with the pencils.
+>
+> Codes and text are read on the device with PDFKit and Vision. On iPhones with Apple Intelligence (iOS 26), Apple's on-device Foundation Models framework also helps read the text; it runs entirely on the iPhone and can be turned off in Settings. Nothing is uploaded and there is no server.
 >
 > Camera and Photos are only used when the person chooses to add a ticket. Notifications are local reminders scheduled on the device.
 
@@ -75,4 +79,5 @@ Suggested five:
 1. Home screen with the Next up cards — "Every ticket. One place."
 2. An open ticket with its QR code — "The code, ready to scan."
 3. Adding a ticket from Mail (the New ticket screen) — "Share it. Stash reads it."
-4. A stay card with door code and Wi-Fi — "Check in without the scroll."
+4. A stay page with the dates, address, actions and house code — "Check in without the scroll."
+5. Adding a stay (the New stay page filling in) — "Your booking, read for you."

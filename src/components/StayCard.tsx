@@ -1,19 +1,23 @@
-import { useState } from 'react';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { ActionSheetIOS, Alert, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
-import { dayKey, fmt, relativeDay } from '../lib/dates';
+import Svg, { Path } from 'react-native-svg';
+import { daysBetween, dayKey, fmt } from '../lib/dates';
 import { copyText } from '../lib/native';
+import { nightsOf } from '../lib/stayReader';
 import type { Stub } from '../lib/types';
-import { colors, font } from '../theme';
-import { Perforated } from './Perforated';
+import { Icon, type IconName } from './Icon';
 import { showToast } from './Toast';
 
-/** "Today · Fri 16 Oct · 15:00" */
-function whenText(day: string | undefined, time: string | undefined) {
-  if (!day) return time ?? '';
-  const rel = relativeDay(day);
-  const d = rel === 'Today' || rel === 'Tomorrow' ? `${rel} · ${fmt.short(day)}` : fmt.short(day);
-  return time ? `${d} · ${time}` : d;
-}
+// The stay page: a violet header with the dates and nights, the address and quick actions,
+// the house code, how to arrive, and the screenshots it was read from.
+
+const VIOLET = '#9747FF';
+const TINT = '#F3ECFF';
+const INK = '#111111';
+const SOFT = '#6B6B70';
+const BOX = '#F5F5F7';
+const WHITE = '#FFFFFF';
 
 export function openDirections(address: string) {
   const q = encodeURIComponent(address);
@@ -34,170 +38,283 @@ export function openDirections(address: string) {
   }
 }
 
-/** One-tap copy on the newer build; the share sheet (which has Copy) before that. */
-const copy = (text: string) => copyText(text).then((how) => how === 'copied' && showToast('Copied'));
+const copy = (text: string, what = 'Copied') => copyText(text).then((how) => how === 'copied' && showToast(what));
 
-function Button({ label, onPress, primary }: { label: string; onPress: () => void; primary?: boolean }) {
+function messageHost(phone: string, host?: string) {
+  const num = phone.replace(/[^\d+]/g, '');
+  const actions = [
+    () => Linking.openURL(`https://wa.me/${num.replace(/^\+/, '')}`),
+    () => Linking.openURL(`sms:${num}`),
+    () => Linking.openURL(`tel:${num}`),
+  ];
+  const options = ['WhatsApp', 'Text message', 'Call', 'Cancel'];
+  const title = host ? `${host} · ${phone}` : phone;
+  if (Platform.OS === 'ios') {
+    ActionSheetIOS.showActionSheetWithOptions({ options, cancelButtonIndex: 3, title }, (i) => actions[i]?.());
+  } else {
+    Alert.alert(title, undefined, [...options.slice(0, 3).map((text, i) => ({ text, onPress: actions[i] })), { text: 'Cancel', style: 'cancel' as const }]);
+  }
+}
+
+function showWifi(name?: string, password?: string) {
+  Alert.alert(name ?? 'Wi-Fi', password ? `Password: ${password}` : undefined, [
+    ...(password ? [{ text: 'Copy password', onPress: () => copy(password, 'Password copied') }] : []),
+    { text: 'OK', style: 'cancel' as const },
+  ]);
+}
+
+/** "IN 16 DAYS", "TODAY", "STAYING NOW"… */
+function statusOf(stub: Stub): string {
+  const today = dayKey();
+  const out = stub.stay?.checkOutDate;
+  const until = daysBetween(today, stub.date);
+  if (until > 1) return `In ${until} days`;
+  if (until === 1) return 'Tomorrow';
+  if (until === 0) return 'Check-in today';
+  if (out && out > today) return 'Staying now';
+  if (out === today) return 'Check-out today';
+  return 'Past';
+}
+
+/** A little four-pointed sparkle for the header. */
+function Star({ right, top, size }: { right: number; top: number; size: number }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.btn, primary && styles.btnPrimary, pressed && { opacity: 0.75 }]}
-    >
-      <Text style={[styles.btnText, primary && styles.btnTextPrimary]}>{label}</Text>
+    <Svg width={size} height={size} viewBox="-12 -12 24 24" style={{ position: 'absolute', right, top }}>
+      <Path d="M0 -12C0 -4 4 0 12 0C4 0 0 4 0 12C0 4 -4 0 -12 0C-4 0 0 -4 0 -12Z" fill={WHITE} fillOpacity={0.7} />
+    </Svg>
+  );
+}
+
+function Action({ icon, label, onPress, primary }: { icon: IconName; label: string; onPress: () => void; primary?: boolean }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.action, pressed && { opacity: 0.7 }]}>
+      <View style={[styles.actionCircle, primary && { backgroundColor: VIOLET }]}>
+        <Icon name={icon} size={22} color={primary ? WHITE : VIOLET} stroke={2} />
+      </View>
+      <Text style={styles.actionText} numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
-function Block({ label, children }: { label: string; children: React.ReactNode }) {
+export function StayCard({ stub }: { stub: Stub }) {
+  const st = stub.stay ?? {};
+  const nights = nightsOf(stub.date, st.checkOutDate);
+  const ref = stub.details?.find((d) => d.label === 'Ref')?.value;
+  const shots = stub.pageUris.length ? stub.pageUris : stub.tickets.map((t) => t.pageUri).filter(Boolean);
+  const code = st.doorCode?.trim();
+  const boxes = code && /^[0-9A-Za-z#*]{1,8}$/.test(code);
+  const steps = st.arrival?.filter(Boolean) ?? [];
+  const actions: { icon: IconName; label: string; onPress: () => void; primary?: boolean }[] = [
+    ...(st.address
+      ? [
+          { icon: 'directions' as const, label: 'Directions', onPress: () => openDirections(st.address!), primary: true },
+          { icon: 'copy' as const, label: 'Copy address', onPress: () => copy(st.address!, 'Address copied') },
+        ]
+      : []),
+    ...(st.phone ? [{ icon: 'message' as const, label: 'Message', onPress: () => messageHost(st.phone!, st.host) }] : []),
+    ...(st.wifiName || st.wifiPassword ? [{ icon: 'wifi' as const, label: 'Wi-Fi', onPress: () => showWifi(st.wifiName, st.wifiPassword) }] : []),
+  ];
+
   return (
-    <View style={styles.block}>
-      <Text style={styles.blockLabel}>{label}</Text>
-      {children}
+    <View style={styles.page}>
+      <View style={styles.header}>
+        <View style={styles.glow} />
+        <Star right={128} top={34} size={12} />
+        <Star right={112} top={62} size={7} />
+        <View style={styles.headTop}>
+          <View style={styles.headLeft}>
+            <View style={styles.badge}>
+              <Icon name="typeBed" size={20} color={VIOLET} stroke={2} />
+            </View>
+            <Text style={styles.kicker}>Stay</Text>
+          </View>
+          <Text style={styles.kicker}>{statusOf(stub)}</Text>
+        </View>
+        <View style={{ gap: 4 }}>
+          <Text style={styles.title} numberOfLines={2}>
+            {stub.title}
+          </Text>
+          {st.host ? <Text style={styles.hosted}>Hosted by {st.host}</Text> : null}
+        </View>
+        <View style={styles.datesBox}>
+          <View>
+            <Text style={styles.dow}>{fmt.dow(stub.date)}</Text>
+            <Text style={styles.day}>{`${Number(fmt.dayNum(stub.date))} ${fmt.mon(stub.date)}`}</Text>
+            {stub.time ? <Text style={styles.time}>from {stub.time}</Text> : null}
+          </View>
+          {nights ? (
+            <View style={styles.nights}>
+              <Icon name="moon" size={14} color={VIOLET} stroke={2.4} />
+              <Text style={styles.nightsText}>
+                {nights} night{nights === 1 ? '' : 's'}
+              </Text>
+            </View>
+          ) : null}
+          {st.checkOutDate ? (
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.dow}>{fmt.dow(st.checkOutDate)}</Text>
+              <Text style={styles.day}>{`${Number(fmt.dayNum(st.checkOutDate))} ${fmt.mon(st.checkOutDate)}`}</Text>
+              {st.checkOutTime ? <Text style={styles.time}>by {st.checkOutTime}</Text> : null}
+            </View>
+          ) : null}
+        </View>
+      </View>
+
+      {st.address ? (
+        <Pressable accessibilityRole="button" onPress={() => openDirections(st.address!)} style={styles.addressRow}>
+          <Icon name="pin" size={20} color={INK} stroke={2} />
+          <Text style={styles.address} selectable>
+            {st.address}
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {actions.length ? (
+        <View style={styles.actions}>
+          {actions.map((a) => (
+            <Action key={a.label} {...a} />
+          ))}
+        </View>
+      ) : null}
+
+      {code ? (
+        <View style={styles.codeBox}>
+          <View style={styles.codeIcon}>
+            <Icon name="key" size={20} color={WHITE} stroke={2} />
+          </View>
+          <View style={{ flex: 1, gap: 6 }}>
+            <Text style={styles.codeLabel}>House code</Text>
+            {boxes ? (
+              <View style={styles.digits}>
+                {code.split('').map((c, i) => (
+                  <View key={i} style={styles.digit}>
+                    <Text style={styles.digitText}>{c}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.codeText} selectable>
+                {code}
+              </Text>
+            )}
+          </View>
+          <Pressable accessibilityRole="button" onPress={() => copy(code, 'Code copied')} style={({ pressed }) => [styles.copyPill, pressed && { opacity: 0.8 }]}>
+            <Text style={styles.copyText}>Copy</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {steps.length || st.gettingIn ? (
+        <View style={styles.box}>
+          <Text style={styles.boxLabel}>{steps.length ? 'Arriving' : 'Getting in'}</Text>
+          {st.gettingIn && steps.length ? <Text style={styles.gettingIn}>{st.gettingIn}</Text> : null}
+          {steps.length ? (
+            steps.map((s, i) => (
+              <View key={i} style={styles.step}>
+                <View style={styles.stepNum}>
+                  <Text style={styles.stepNumText}>{i + 1}</Text>
+                </View>
+                <Text style={styles.stepText}>{s}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.stepText}>{st.gettingIn}</Text>
+          )}
+        </View>
+      ) : null}
+
+      {ref ? (
+        <Pressable accessibilityRole="button" onPress={() => copy(ref, 'Booking ref copied')} style={styles.refRow}>
+          <Text style={styles.boxLabel}>Booking ref</Text>
+          <Text style={styles.ref} selectable>
+            {ref}
+          </Text>
+        </Pressable>
+      ) : null}
+
+      {!st.address && !code && !steps.length && !st.gettingIn && !actions.length ? (
+        <Text style={styles.empty}>No address or codes yet. Tap ⋯ → Edit details to add them.</Text>
+      ) : null}
+
+      {shots.length && !stub.sample ? (
+        <View style={{ gap: 10 }}>
+          <View style={styles.shotsHead}>
+            <Text style={styles.shotsLabel}>Your screenshots</Text>
+            <Text style={styles.shotsCount}>{shots.length}</Text>
+          </View>
+          <View style={styles.shots}>
+            {shots.map((uri) => (
+              <Pressable
+                key={uri}
+                accessibilityRole="button"
+                accessibilityLabel="Open screenshot"
+                onPress={() => router.push({ pathname: '/original/[id]', params: { id: stub.id, page: uri } })}
+                style={({ pressed }) => [styles.shot, pressed && { opacity: 0.8 }]}
+              >
+                <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
 
-/** The check-in card: where it is, how to get in, how to get online. */
-export function StayCard({ stub }: { stub: Stub }) {
-  const st = stub.stay ?? {};
-  const [showNotes, setShowNotes] = useState(false);
-  const staying = stub.date < dayKey();
-  const ref = stub.details?.find((d) => d.label === 'Ref')?.value;
-  const hasAnything = st.address || st.doorCode || st.wifiName || st.wifiPassword || st.phone;
-
-  return (
-    <Perforated
-      color={colors.paperWarm}
-      ground={colors.ground}
-      radius={22}
-      notch={26}
-      rule="#CFCFC6"
-      top={
-        <View style={styles.top}>
-          <Text style={styles.kicker}>{staying ? 'Staying now' : st.host ? `Stay · host ${st.host}` : 'Stay'}</Text>
-          <Text style={[styles.title, stub.title.length > 24 && { fontSize: 30 }]}>{stub.title}</Text>
-          <View style={styles.grid}>
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Check-in</Text>
-              <Text style={styles.fieldValue}>{whenText(stub.date, stub.time)}</Text>
-            </View>
-            {st.checkOutDate || st.checkOutTime ? (
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Check-out</Text>
-                <Text style={styles.fieldValue}>{whenText(st.checkOutDate, st.checkOutTime)}</Text>
-              </View>
-            ) : null}
-            {ref ? (
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Booking ref</Text>
-                <Text style={[styles.fieldValue, { ...font.mono }]} selectable>
-                  {ref}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-      }
-      bottom={
-        <View style={styles.bottom}>
-          {st.address ? (
-            <Block label="Address">
-              <Text style={styles.address} selectable>
-                {st.address}
-              </Text>
-              <View style={styles.row}>
-                <Button primary label="Directions" onPress={() => openDirections(st.address!)} />
-                <Button label="Copy" onPress={() => copy(st.address!)} />
-              </View>
-            </Block>
-          ) : null}
-
-          {st.doorCode ? (
-            <Block label="Door / key code">
-              <Text
-                style={[styles.code, st.doorCode.length > 10 && { fontSize: 28 }, /[a-z]{3}/.test(st.doorCode) && styles.codeWords]}
-                selectable
-              >
-                {st.doorCode}
-              </Text>
-            </Block>
-          ) : null}
-
-          {st.wifiName || st.wifiPassword ? (
-            <Block label="Wi-Fi">
-              {st.wifiName ? (
-                <Text style={styles.wifiName} selectable>
-                  {st.wifiName}
-                </Text>
-              ) : null}
-              {st.wifiPassword ? (
-                <View style={styles.row}>
-                  <Text style={styles.password} selectable>
-                    {st.wifiPassword}
-                  </Text>
-                  <Button label="Copy password" onPress={() => copy(st.wifiPassword!)} />
-                </View>
-              ) : null}
-            </Block>
-          ) : null}
-
-          {st.phone ? (
-            <Block label={st.host ? `Host · ${st.host}` : 'Host'}>
-              <View style={styles.row}>
-                <Text style={styles.phone} selectable>
-                  {st.phone}
-                </Text>
-                <Button label="Call" onPress={() => Linking.openURL(`tel:${st.phone!.replace(/[^\d+]/g, '')}`)} />
-              </View>
-            </Block>
-          ) : null}
-
-          {!hasAnything ? (
-            <Text style={styles.empty}>
-              No address or codes yet. Tap ⋯ → Edit details to add them.
-            </Text>
-          ) : null}
-
-          {st.notes ? (
-            <Block label="Check-in instructions">
-              <Pressable accessibilityRole="button" onPress={() => setShowNotes((v) => !v)}>
-                <Text style={styles.notes} numberOfLines={showNotes ? undefined : 4} selectable={showNotes}>
-                  {st.notes}
-                </Text>
-                <Text style={styles.more}>{showNotes ? 'Show less' : 'Show all'}</Text>
-              </Pressable>
-            </Block>
-          ) : null}
-        </View>
-      }
-    />
-  );
-}
-
 const styles = StyleSheet.create({
-  top: { padding: 22, paddingBottom: 18, gap: 12 },
-  kicker: { ...font.mono, fontSize: 11, letterSpacing: 1.6, textTransform: 'uppercase', color: colors.inkSoft },
-  title: { ...font.display, fontSize: 28, color: colors.ink },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 28, rowGap: 10 },
-  field: { gap: 2 },
-  fieldLabel: { ...font.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkFaint },
-  fieldValue: { ...font.bodyBold, fontSize: 15, color: colors.ink },
-  bottom: { padding: 22, gap: 22 },
-  block: { gap: 8 },
-  blockLabel: { ...font.mono, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase', color: colors.inkSoft },
-  address: { ...font.bodyBold, fontSize: 19, lineHeight: 25, color: colors.ink },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  code: { ...font.display, fontSize: 38, letterSpacing: 2, color: colors.ink },
-  codeWords: { ...font.bodyBold, fontSize: 20, lineHeight: 26, letterSpacing: 0 },
-  wifiName: { ...font.bodyBold, fontSize: 18, color: colors.ink },
-  password: { ...font.monoBold, fontSize: 18, color: colors.ink, flexShrink: 1 },
-  phone: { ...font.mono, fontSize: 16, color: colors.ink },
-  notes: { ...font.body, fontSize: 15, lineHeight: 22, color: colors.ink },
-  more: { ...font.bodyBold, fontSize: 14, color: colors.ink, textDecorationLine: 'underline', marginTop: 6 },
-  empty: { ...font.body, fontSize: 15, lineHeight: 22, color: colors.inkSoft },
-  btn: { minHeight: 44, paddingHorizontal: 18, borderRadius: 999, borderWidth: 2, borderColor: colors.ink, justifyContent: 'center' },
-  btnPrimary: { backgroundColor: colors.ink },
-  btnText: { ...font.bodyBold, fontSize: 15, color: colors.ink },
-  btnTextPrimary: { color: colors.accent },
+  page: { gap: 14 },
+  header: { backgroundColor: VIOLET, borderRadius: 28, padding: 20, gap: 18, overflow: 'hidden' },
+  glow: { position: 'absolute', right: -70, top: -70, width: 210, height: 210, borderRadius: 105, backgroundColor: 'rgba(255,255,255,0.12)' },
+  headTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  badge: { width: 40, height: 40, borderRadius: 20, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center' },
+  kicker: { fontSize: 13, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: WHITE },
+  title: { fontSize: 32, lineHeight: 36, fontWeight: '800', letterSpacing: -0.8, color: WHITE },
+  hosted: { fontSize: 16, fontWeight: '500', color: 'rgba(255,255,255,0.9)' },
+  datesBox: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dow: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' },
+  day: { fontSize: 22, fontWeight: '800', color: WHITE },
+  time: { fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.85)' },
+  nights: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: WHITE, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  nightsText: { fontSize: 15, fontWeight: '700', color: VIOLET },
+  addressRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: BOX, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14 },
+  address: { flex: 1, fontSize: 17, fontWeight: '500', color: INK },
+  actions: { flexDirection: 'row', gap: 4 },
+  action: { flex: 1, alignItems: 'center', gap: 8 },
+  actionCircle: { width: 58, height: 58, borderRadius: 29, backgroundColor: TINT, alignItems: 'center', justifyContent: 'center' },
+  actionText: { fontSize: 12.5, fontWeight: '600', color: INK },
+  codeBox: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: TINT, borderRadius: 20, padding: 16 },
+  codeIcon: { width: 46, height: 46, borderRadius: 23, backgroundColor: VIOLET, alignItems: 'center', justifyContent: 'center' },
+  codeLabel: { fontSize: 13, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', color: VIOLET },
+  digits: { flexDirection: 'row', gap: 8 },
+  digit: { minWidth: 34, height: 40, borderRadius: 8, backgroundColor: WHITE, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  digitText: { fontSize: 24, fontWeight: '800', color: INK, fontVariant: ['tabular-nums'] },
+  codeText: { fontSize: 22, fontWeight: '800', color: INK },
+  copyPill: { backgroundColor: VIOLET, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 9 },
+  copyText: { fontSize: 15, fontWeight: '700', color: WHITE },
+  box: { backgroundColor: BOX, borderRadius: 20, padding: 18, gap: 12 },
+  boxLabel: { fontSize: 13, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase', color: SOFT },
+  gettingIn: { fontSize: 16, fontWeight: '600', color: INK },
+  step: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  stepNum: { width: 24, height: 24, borderRadius: 12, backgroundColor: VIOLET, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  stepNumText: { fontSize: 13, fontWeight: '700', color: WHITE },
+  stepText: { flex: 1, fontSize: 16, lineHeight: 22, color: INK },
+  refRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: BOX, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14 },
+  ref: { fontSize: 17, fontWeight: '700', color: INK, fontVariant: ['tabular-nums'] },
+  empty: { fontSize: 15, lineHeight: 21, color: SOFT },
+  shotsHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  shotsLabel: { fontSize: 13, fontWeight: '700', letterSpacing: 1.4, textTransform: 'uppercase', color: SOFT },
+  shotsCount: { fontSize: 15, fontWeight: '600', color: VIOLET },
+  shots: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  shot: { width: 64, height: 96, borderRadius: 12, overflow: 'hidden', backgroundColor: BOX, borderWidth: 1, borderColor: '#E7E7EA' },
 });

@@ -51,6 +51,10 @@ export type Stay = {
   phone?: string;
   /** The check-in instructions, as read or pasted. */
   notes?: string;
+  /** How you get in, in a few words: "Lockbox by the door", "Host meets you". */
+  gettingIn?: string;
+  /** Directions for arriving, in order. */
+  arrival?: string[];
 };
 
 /** Something you're going to: one date, one or more tickets. */

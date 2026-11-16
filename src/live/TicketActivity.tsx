@@ -3,12 +3,14 @@ import {
   activityBackgroundTint,
   background,
   cornerRadius,
+  fixedSize,
   kerning,
   font,
   foregroundStyle,
   frame,
   lineLimit,
   minimumScaleFactor,
+  multilineTextAlignment,
   padding,
   resizable,
   shapes,
@@ -106,12 +108,23 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
             <Spacer />
             <HStack spacing={4} modifiers={[padding({ horizontal: 10, vertical: 5 }), background('#E8F1FF', shapes.capsule())]}>
               {/* Live countdown. iOS shows minutes and seconds under an hour; minutes only needs a native change (next build). */}
-              {soon ? <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue)]}>Boards in</Text> : null}
+              {/* iOS reserves room for the longest countdown it might show: keep "Boards in" on one line and cap that room. */}
+              {soon ? (
+                <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue), lineLimit(1), fixedSize({ horizontal: true })]}>
+                  Boards in
+                </Text>
+              ) : null}
               {soon ? (
                 <Text
                   date={new Date(props.boardsAt)}
                   dateStyle="relative"
-                  modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue), lineLimit(1)]}
+                  modifiers={[
+                    font({ size: 13, weight: 'semibold' }),
+                    foregroundStyle(blue),
+                    lineLimit(1),
+                    multilineTextAlignment('leading'),
+                    frame({ maxWidth: 100, alignment: 'leading' }),
+                  ]}
                 />
               ) : (
                 <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue), lineLimit(1)]}>

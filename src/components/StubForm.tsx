@@ -52,7 +52,14 @@ function reminderText(date: string, time?: string, flight?: boolean) {
 
 function flightReminderNote(date: string, time: string | undefined, on: boolean, what = 'flight') {
   if (!on) return `No reminder or lock screen card for this ${what}.`;
-  if (reminderDate({ date, time }).getTime() < Date.now()) return reminderText(date, time, true);
+  if (reminderDate({ date, time }).getTime() < Date.now()) {
+    // Too late for the reminder, but not necessarily for the trip.
+    const leaves = time ? toDate(date, time).getTime() : toDate(date, '23:59').getTime();
+    if (leaves > Date.now()) {
+      return `Too late for the 2-hour reminder (${timeKey(reminderDate({ date, time }))}), but your ${what} still shows on the lock screen today.`;
+    }
+    return reminderText(date, time, true);
+  }
   return `${reminderText(date, time, true)}. Your ${what} shows on the lock screen on the day.`;
 }
 

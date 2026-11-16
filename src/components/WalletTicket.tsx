@@ -59,7 +59,8 @@ function cellsFor(stub: Stub, index: number): Cell[] {
       st.address ? { label: 'Address', value: st.address.split(',')[0], span: 2 } : null,
     ].filter((c): c is Cell => !!c);
   }
-  let all = [...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company' && d.label !== 'Flight');
+  // Company and flight number are in the header; Location is only for Directions.
+  let all = [...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])].filter((d) => !['Company', 'Flight', 'Location'].includes(d.label));
   // Flights: the flight number matters more at the airport than the booking ref, so it takes its place.
   if (stub.kind === 'flight') {
     const flight = [...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])].find((d) => d.label === 'Flight');

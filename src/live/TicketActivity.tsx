@@ -165,17 +165,19 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
               S
             </Text>
           )}
-          {props.flightNo.length > 0 || props.gate.length > 0 ? (
+          {props.flightNo.length > 0 ? (
             <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>
-              {[props.flightNo, props.gate.length > 0 ? `Gate ${props.gate}` : ''].filter((x) => x.length > 0).join(' · ')}
+              {props.flightNo}
             </Text>
           ) : null}
         </HStack>
       ),
-      // Left: icon, flight number and gate. Right: boarding time.
+      // Left: icon and flight number. Right: "G5 · 17:30" (G for gate keeps it short enough to fit).
       compactTrailing: (
         <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>
-          {props.boarding.length > 0 ? props.boarding : props.when}
+          {[props.gate.length > 0 ? `G${props.gate}` : '', props.boarding.length > 0 ? props.boarding : props.when]
+            .filter((x) => x.length > 0)
+            .join(' · ')}
         </Text>
       ),
       minimal:

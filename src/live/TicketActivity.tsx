@@ -36,7 +36,11 @@ export type TicketActivityProps = {
   doorCode: string;
   messageUrl: string;
   directionsUrl: string;
-  /** The ticket type: flights and stays get their own cards. */
+  /** Ferries only (empty otherwise): "Sanur Harbour", "Nusa Lembongan", "08:30". */
+  fromPlace: string;
+  toPlace: string;
+  ferryCheckIn: string;
+  /** The ticket type: flights, stays and ferries get their own cards. */
   kind: string;
   /** Flights only (empty otherwise): "Air New Zealand", "NZ 104", "SYD", "AKL", "13:55", "51", "23A", "I". */
   company: string;
@@ -59,6 +63,131 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
   const paper = env.isLuminanceReduced ? '#BBBBB5' : '#F4F4F0';
   const soft = '#B9B9B2';
   const hasCode = props.code.length > 0;
+
+  if (props.kind === 'ferry') {
+    // The ferry card: white, the company and departure time, from and to, then check-in and Directions.
+    const ink = '#111111';
+    const grey = '#6B6B70';
+    const teal = '#3E7D6E';
+    const tint = '#E3F2EE';
+    const button = '#6FB8A7';
+    const route = props.fromPlace.length > 0 && props.toPlace.length > 0;
+    return {
+      banner: (
+        <VStack
+          alignment="leading"
+          spacing={6}
+          modifiers={[
+            padding({ horizontal: 16, vertical: 12 }),
+            frame({ maxWidth: 1000, alignment: 'leading' }),
+            background('#FFFFFF'),
+            activityBackgroundTint('#FFFFFF'),
+          ]}
+        >
+          <HStack spacing={10}>
+            {props.logo.length > 0 ? (
+              <Image uiImage={props.logo} modifiers={[resizable(), frame({ width: 34, height: 34 }), cornerRadius(8)]} />
+            ) : (
+              <Image systemName="ferry.fill" size={22} color={teal} />
+            )}
+            <VStack alignment="leading" spacing={0}>
+              <Text modifiers={[font({ size: 15, weight: 'bold' }), foregroundStyle(ink), lineLimit(1)]}>
+                {props.company.length > 0 ? props.company : props.title}
+              </Text>
+              <Text modifiers={[font({ size: 13 }), foregroundStyle(grey), lineLimit(1)]}>
+                {props.when !== 'Today' ? `Ferry · departs ${props.when}` : 'Ferry'}
+              </Text>
+            </VStack>
+            <Spacer />
+            <Text
+              modifiers={[
+                font({ size: 13, weight: 'semibold' }),
+                foregroundStyle(teal),
+                lineLimit(1),
+                fixedSize({ horizontal: true }),
+                padding({ horizontal: 10, vertical: 5 }),
+                background(tint, shapes.capsule()),
+              ]}
+            >
+              Today
+            </Text>
+          </HStack>
+          {route ? (
+            <HStack spacing={8}>
+              <VStack alignment="leading" spacing={0}>
+                <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle(grey), kerning(0.8)]}>FROM</Text>
+                <Text modifiers={[font({ size: 19, weight: 'heavy' }), foregroundStyle(ink), lineLimit(1), minimumScaleFactor(0.6)]}>{props.fromPlace}</Text>
+              </VStack>
+              <Spacer />
+              <Image
+                systemName="ferry"
+                size={15}
+                color={teal}
+                modifiers={[frame({ width: 32, height: 32 }), background(tint, shapes.circle())]}
+              />
+              <Spacer />
+              <VStack alignment="trailing" spacing={0}>
+                <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle(grey), kerning(0.8)]}>TO</Text>
+                <Text modifiers={[font({ size: 19, weight: 'heavy' }), foregroundStyle(ink), lineLimit(1), minimumScaleFactor(0.6)]}>{props.toPlace}</Text>
+              </VStack>
+            </HStack>
+          ) : (
+            <Text modifiers={[font({ size: 19, weight: 'heavy' }), foregroundStyle(ink), lineLimit(1), minimumScaleFactor(0.6)]}>{props.title}</Text>
+          )}
+          <HStack spacing={10} modifiers={[padding({ horizontal: 14, vertical: 6 }), background('#F2F2F4', shapes.roundedRectangle({ cornerRadius: 16 }))]}>
+            {props.ferryCheckIn.length > 0 ? (
+              <VStack alignment="leading" spacing={1}>
+                <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle(grey), kerning(0.8)]}>CHECK-IN</Text>
+                <Text modifiers={[font({ size: 20, weight: 'heavy' }), foregroundStyle(ink)]}>{props.ferryCheckIn}</Text>
+              </VStack>
+            ) : null}
+            <Spacer />
+            {props.directionsUrl.length > 0 ? (
+              <Link destination={props.directionsUrl}>
+                <HStack
+                  spacing={6}
+                  modifiers={[padding({ horizontal: 16, vertical: 8 }), background(button, shapes.capsule())]}
+                >
+                  <Image systemName="mappin.and.ellipse" size={14} color="#FFFFFF" />
+                  <Text modifiers={[font({ size: 15, weight: 'semibold' }), foregroundStyle('#FFFFFF')]}>Directions</Text>
+                </HStack>
+              </Link>
+            ) : null}
+          </HStack>
+        </VStack>
+      ),
+      compactLeading:
+        props.logo.length > 0 ? (
+          <Image uiImage={props.logo} modifiers={[resizable(), frame({ width: 18, height: 18 }), cornerRadius(5)]} />
+        ) : (
+          <Image systemName="ferry.fill" color="#7FD6C2" />
+        ),
+      compactTrailing: (
+        <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>
+          {props.ferryCheckIn.length > 0 ? `In ${props.ferryCheckIn}` : props.when}
+        </Text>
+      ),
+      minimal:
+        props.logo.length > 0 ? (
+          <Image uiImage={props.logo} modifiers={[resizable(), frame({ width: 20, height: 20 }), cornerRadius(5)]} />
+        ) : (
+          <Image systemName="ferry.fill" color="#7FD6C2" />
+        ),
+      expandedLeading: (
+        <Text modifiers={[font({ size: 16, weight: 'heavy' }), foregroundStyle('#F4F4F0'), lineLimit(1), padding({ leading: 8 })]}>
+          {route ? `${props.fromPlace} → ${props.toPlace}` : props.title}
+        </Text>
+      ),
+      expandedTrailing: (
+        <Text modifiers={[font({ size: 15, weight: 'semibold' }), foregroundStyle('#7FD6C2'), padding({ trailing: 8 })]}>{props.when}</Text>
+      ),
+      expandedBottom: (
+        <Text modifiers={[font({ size: 14 }), foregroundStyle('#B9B9B2'), lineLimit(1), padding({ horizontal: 8, bottom: 8 })]}>
+          {[props.company, props.ferryCheckIn.length > 0 ? `Check-in ${props.ferryCheckIn}` : ''].filter((x) => x.length > 0).join(' · ')}
+        </Text>
+      ),
+    };
+  }
 
   if (props.kind === 'stay') {
     // The stay card: white, the name and town, then check-in, the door code and two buttons.

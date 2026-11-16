@@ -18,6 +18,22 @@ export type FlightInfo = {
 
 const find = (list: Detail[] | undefined, label: string) => list?.find((d) => d.label === label)?.value;
 
+/** "Sanur Harbour → Nusa Lembongan": where a journey starts and ends, in words. */
+export function routeEnds(title: string): [string, string] | null {
+  const parts = title.split(/\s*(?:→|->)\s*/).map((p) => p.trim());
+  return parts.length === 2 && parts[0] && parts[1] ? [parts[0], parts[1]] : null;
+}
+
+/** When to be there for a ferry or bus: check-in, else boarding, else when the gate closes. */
+export function checkInTime(stub: Stub): string | undefined {
+  const all = [...(stub.details ?? []), ...stub.tickets.flatMap((t) => t.details ?? [])];
+  for (const label of ['Check-in', 'Boarding', 'Doors', 'Gate closes']) {
+    const v = find(all, label);
+    if (v) return v;
+  }
+  return undefined;
+}
+
 /** "SYD → AKL" (or "LGW -> PMI") as two airport codes. */
 export function airports(title: string): [string, string] | null {
   const parts = title.split(/\s*(?:→|->)\s*/);

@@ -67,35 +67,44 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
     const dashes = '- - - - - - - - - - - - - - -';
     return {
       banner: (
-        <VStack alignment="leading" spacing={14} modifiers={[padding({ all: 16 }), activityBackgroundTint('#FFFFFF')]}>
-          <HStack spacing={12}>
+        <VStack
+          alignment="leading"
+          spacing={6}
+          modifiers={[
+            padding({ horizontal: 16, vertical: 12 }),
+            frame({ maxWidth: 1000, alignment: 'leading' }),
+            background('#FFFFFF'),
+            activityBackgroundTint('#FFFFFF'),
+          ]}
+        >
+          <HStack spacing={10}>
             <VStack
-              spacing={1}
-              modifiers={[frame({ width: 46, height: 46 }), background(logo, shapes.roundedRectangle({ cornerRadius: 11 }))]}
+              spacing={0}
+              modifiers={[frame({ width: 36, height: 36 }), background(logo, shapes.roundedRectangle({ cornerRadius: 9 }))]}
             >
-              <Text modifiers={[font({ size: 22, weight: 'heavy' }), foregroundStyle('#FFFFFF')]}>S</Text>
+              <Text modifiers={[font({ size: 18, weight: 'heavy' }), foregroundStyle('#FFFFFF')]}>S</Text>
               <HStack spacing={2}>
-                <Text modifiers={[font({ size: 6 }), foregroundStyle('#FF2D95')]}>●</Text>
-                <Text modifiers={[font({ size: 6 }), foregroundStyle('#1E7BFF')]}>●</Text>
-                <Text modifiers={[font({ size: 6 }), foregroundStyle('#00D16C')]}>●</Text>
+                <Text modifiers={[font({ size: 5 }), foregroundStyle('#FF2D95')]}>●</Text>
+                <Text modifiers={[font({ size: 5 }), foregroundStyle('#1E7BFF')]}>●</Text>
+                <Text modifiers={[font({ size: 5 }), foregroundStyle('#00D16C')]}>●</Text>
               </HStack>
             </VStack>
-            <VStack alignment="leading" spacing={2}>
-              <Text modifiers={[font({ size: 17, weight: 'semibold' }), foregroundStyle(ink), lineLimit(1)]}>
+            <VStack alignment="leading" spacing={0}>
+              <Text modifiers={[font({ size: 15, weight: 'semibold' }), foregroundStyle(ink), lineLimit(1)]}>
                 {props.company.length > 0 ? props.company : 'Your flight'}
               </Text>
-              <Text modifiers={[font({ size: 14 }), foregroundStyle(grey), lineLimit(1)]}>
+              <Text modifiers={[font({ size: 13 }), foregroundStyle(grey), lineLimit(1)]}>
                 {props.flightNo.length > 0 ? `Flight ${props.flightNo}` : props.title}
               </Text>
             </VStack>
             <Spacer />
-            <HStack spacing={4} modifiers={[padding({ horizontal: 10, vertical: 6 }), background('#E8F1FF', shapes.capsule())]}>
-              {soon ? <Text modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle(blue)]}>Boards in</Text> : null}
+            <HStack spacing={4} modifiers={[padding({ horizontal: 10, vertical: 5 }), background('#E8F1FF', shapes.capsule())]}>
+              {soon ? <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue)]}>Boards in</Text> : null}
               {soon ? (
                 <Text
                   date={new Date(props.boardsAt)}
                   dateStyle="relative"
-                  modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle(blue), lineLimit(1)]}
+                  modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue), lineLimit(1)]}
                 />
               ) : (
                 <Text modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle(blue)]}>
@@ -106,23 +115,23 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
           </HStack>
           {route ? (
             <HStack spacing={8}>
-              <Text modifiers={[font({ size: 34, weight: 'heavy' }), foregroundStyle(ink)]}>{props.from}</Text>
+              <Text modifiers={[font({ size: 26, weight: 'heavy' }), foregroundStyle(ink)]}>{props.from}</Text>
               <Text modifiers={[font({ size: 12 }), foregroundStyle('#C7C7CC'), lineLimit(1), minimumScaleFactor(0.3)]}>{dashes}</Text>
               <Image systemName="airplane" size={18} color={blue} />
               <Text modifiers={[font({ size: 12 }), foregroundStyle('#C7C7CC'), lineLimit(1), minimumScaleFactor(0.3)]}>{dashes}</Text>
-              <Text modifiers={[font({ size: 34, weight: 'heavy' }), foregroundStyle(ink)]}>{props.to}</Text>
+              <Text modifiers={[font({ size: 26, weight: 'heavy' }), foregroundStyle(ink)]}>{props.to}</Text>
             </HStack>
           ) : (
-            <Text modifiers={[font({ size: 24, weight: 'heavy' }), foregroundStyle(ink), lineLimit(2)]}>{props.title}</Text>
+            <Text modifiers={[font({ size: 22, weight: 'heavy' }), foregroundStyle(ink), lineLimit(1), minimumScaleFactor(0.6)]}>{props.title}</Text>
           )}
           {facts.length > 0 ? (
-            <HStack spacing={0} modifiers={[padding({ vertical: 12 }), background('#F2F2F4', shapes.roundedRectangle({ cornerRadius: 16 }))]}>
+            <HStack spacing={0} modifiers={[padding({ vertical: 7 }), background('#F2F2F4', shapes.roundedRectangle({ cornerRadius: 14 }))]}>
               {facts.map((f, i) => (
                 <HStack key={f[0]} spacing={0}>
-                  {i > 0 ? <Divider modifiers={[frame({ height: 34 })]} /> : null}
-                  <VStack spacing={4} modifiers={[frame({ maxWidth: 1000 })]}>
-                    <Text modifiers={[font({ size: 11, weight: 'semibold' }), foregroundStyle(grey), kerning(1)]}>{f[0]}</Text>
-                    <Text modifiers={[font({ size: 22, weight: 'heavy' }), foregroundStyle(ink), lineLimit(1), minimumScaleFactor(0.6)]}>
+                  {i > 0 ? <Divider modifiers={[frame({ height: 28 })]} /> : null}
+                  <VStack spacing={1} modifiers={[frame({ maxWidth: 1000 })]}>
+                    <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle(grey), kerning(0.8)]}>{f[0]}</Text>
+                    <Text modifiers={[font({ size: 18, weight: 'heavy' }), foregroundStyle(ink), lineLimit(1), minimumScaleFactor(0.6)]}>
                       {f[1]}
                     </Text>
                   </VStack>
@@ -132,13 +141,40 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
           ) : null}
         </VStack>
       ),
-      compactLeading: <Image systemName="airplane" color={blue} />,
-      compactTrailing: (
-        <Text modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle(blue)]}>
-          {props.boarding.length > 0 ? props.boarding : props.when}
+      compactLeading: (
+        <Text
+          modifiers={[
+            font({ size: 13, weight: 'heavy' }),
+            foregroundStyle('#FFFFFF'),
+            frame({ width: 22, height: 22 }),
+            background(logo, shapes.roundedRectangle({ cornerRadius: 6 })),
+          ]}
+        >
+          S
         </Text>
       ),
-      minimal: <Image systemName="airplane" color={blue} />,
+      compactTrailing: (
+        <HStack spacing={6}>
+          {props.gate.length > 0 ? (
+            <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>{`Gate ${props.gate}`}</Text>
+          ) : null}
+          <Text modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle('#7DB3FF')]}>
+            {props.boarding.length > 0 ? props.boarding : props.when}
+          </Text>
+        </HStack>
+      ),
+      minimal: (
+        <Text
+          modifiers={[
+            font({ size: 13, weight: 'heavy' }),
+            foregroundStyle('#FFFFFF'),
+            frame({ width: 22, height: 22 }),
+            background(logo, shapes.roundedRectangle({ cornerRadius: 6 })),
+          ]}
+        >
+          S
+        </Text>
+      ),
       expandedLeading: (
         <Text modifiers={[font({ size: 17, weight: 'heavy' }), foregroundStyle('#F4F4F0'), padding({ leading: 8 })]}>
           {route ? `${props.from} → ${props.to}` : props.flightNo}

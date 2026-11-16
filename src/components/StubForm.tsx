@@ -330,6 +330,8 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
                   )}
                 </View>
                 <View style={styles.divider} />
+                <TextRow label="Flight number" value={flight.flight ?? ''} onChange={(v) => setF({ flight: v })} placeholder="e.g. NZ 104" caps />
+                <View style={styles.divider} />
                 <TimeRow label="Boarding" date={date} value={flight.boarding} onChange={(v) => setF({ boarding: v })} fallback={time ? minus(time, 40) : '09:00'} />
                 <View style={styles.divider} />
                 <TimeRow label="Departs" date={date} value={time} onChange={setTime} fallback={flight.boarding ? minus(flight.boarding, -40) : '10:00'} />

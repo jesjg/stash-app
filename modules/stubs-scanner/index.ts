@@ -74,7 +74,7 @@ export const isPaperScanAvailable = typeof native?.scanPaperAsync === 'function'
 
 /** Opens the document camera; resolves with the scanned page image URIs ([] if cancelled). */
 export async function scanPaperAsync(outDir: string): Promise<string[]> {
-  if (!native?.scanPaperAsync) throw new Error('Scanning paper tickets needs the latest Stash from TestFlight.');
+  if (!native?.scanPaperAsync) throw new Error('Scanning paper tickets needs the latest Stash: update it from the App Store.');
   return native.scanPaperAsync(outDir);
 }
 

@@ -150,9 +150,9 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
       ),
       // The Dynamic Island: the Stash icon and flight number, then gate and boarding time, in white.
       compactLeading: (
-        <HStack spacing={5}>
+        <HStack spacing={4}>
           {props.logo.length > 0 ? (
-            <Image uiImage={props.logo} modifiers={[resizable(), frame({ width: 20, height: 20 }), cornerRadius(5)]} />
+            <Image uiImage={props.logo} modifiers={[resizable(), frame({ width: 18, height: 18 }), cornerRadius(5)]} />
           ) : (
             <Text
               modifiers={[
@@ -166,14 +166,20 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
             </Text>
           )}
           {props.flightNo.length > 0 ? (
-            <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>{props.flightNo}</Text>
+            <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>{props.flightNo}</Text>
           ) : null}
         </HStack>
       ),
+      // Gate stacked over the time, so this side is no wider than the flight number and the island stays narrow.
       compactTrailing: (
-        <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>
-          {[props.gate.length > 0 ? `Gate ${props.gate}` : '', props.boarding.length > 0 ? props.boarding : props.when].filter((x) => x.length > 0).join(' · ')}
-        </Text>
+        <VStack alignment="trailing" spacing={0}>
+          {props.gate.length > 0 ? (
+            <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>{`Gate ${props.gate}`}</Text>
+          ) : null}
+          <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>
+            {props.boarding.length > 0 ? props.boarding : props.when}
+          </Text>
+        </VStack>
       ),
       minimal:
         props.logo.length > 0 ? (

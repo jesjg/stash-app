@@ -26,6 +26,8 @@ export type TicketActivityProps = {
   detail: string;
   /** file:// URL of the code image in the shared app group folder (may be empty) */
   code: string;
+  /** file:// URL of the Stash app icon in the shared folder ('' if missing: a drawn S stands in). */
+  logo: string;
   /** The ticket type: flights get their own card. */
   kind: string;
   /** Flights only (empty otherwise): "Air New Zealand", "NZ 104", "SYD", "AKL", "13:55", "51", "23A", "I". */
@@ -63,7 +65,6 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
       ['TERMINAL', props.terminal],
     ].filter((f) => f[1].length > 0);
     const route = props.from.length > 0 && props.to.length > 0;
-    const soon = props.boardsAt > Date.now();
     const dashes = '- - - - - - - - - - - - - - -';
     return {
       banner: (
@@ -78,6 +79,9 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
           ]}
         >
           <HStack spacing={10}>
+            {props.logo.length > 0 ? (
+              <Image uiImage={props.logo} modifiers={[resizable(), frame({ width: 36, height: 36 }), cornerRadius(9)]} />
+            ) : (
             <VStack
               spacing={0}
               modifiers={[frame({ width: 36, height: 36 }), background(logo, shapes.roundedRectangle({ cornerRadius: 9 }))]}
@@ -89,6 +93,7 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
                 <Text modifiers={[font({ size: 5 }), foregroundStyle('#00D16C')]}>●</Text>
               </HStack>
             </VStack>
+            )}
             <VStack alignment="leading" spacing={0}>
               <Text modifiers={[font({ size: 15, weight: 'semibold' }), foregroundStyle(ink), lineLimit(1)]}>
                 {props.company.length > 0 ? props.company : 'Your flight'}
@@ -99,18 +104,10 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
             </VStack>
             <Spacer />
             <HStack spacing={4} modifiers={[padding({ horizontal: 10, vertical: 5 }), background('#E8F1FF', shapes.capsule())]}>
-              {soon ? <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue)]}>Boards in</Text> : null}
-              {soon ? (
-                <Text
-                  date={new Date(props.boardsAt)}
-                  dateStyle="relative"
-                  modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue), lineLimit(1)]}
-                />
-              ) : (
-                <Text modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle(blue)]}>
-                  {props.boarding.length > 0 ? `Boarding ${props.boarding}` : props.when}
-                </Text>
-              )}
+              {/* A fixed time: iOS's live countdown always shows seconds under an hour. */}
+              <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue), lineLimit(1)]}>
+                {props.boarding.length > 0 ? `Boards at ${props.boarding}` : props.when}
+              </Text>
             </HStack>
           </HStack>
           {route ? (
@@ -141,40 +138,48 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
           ) : null}
         </VStack>
       ),
+      // The Dynamic Island: the Stash icon and flight number, then gate and boarding time, in white.
       compactLeading: (
-        <Text
-          modifiers={[
-            font({ size: 13, weight: 'heavy' }),
-            foregroundStyle('#FFFFFF'),
-            frame({ width: 22, height: 22 }),
-            background(logo, shapes.roundedRectangle({ cornerRadius: 6 })),
-          ]}
-        >
-          S
-        </Text>
-      ),
-      compactTrailing: (
-        <HStack spacing={6}>
-          {props.gate.length > 0 ? (
-            <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>{`Gate ${props.gate}`}</Text>
+        <HStack spacing={5}>
+          {props.logo.length > 0 ? (
+            <Image uiImage={props.logo} modifiers={[resizable(), frame({ width: 20, height: 20 }), cornerRadius(5)]} />
+          ) : (
+            <Text
+              modifiers={[
+                font({ size: 12, weight: 'heavy' }),
+                foregroundStyle('#FFFFFF'),
+                frame({ width: 20, height: 20 }),
+                background(logo, shapes.roundedRectangle({ cornerRadius: 5 })),
+              ]}
+            >
+              S
+            </Text>
+          )}
+          {props.flightNo.length > 0 ? (
+            <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>{props.flightNo}</Text>
           ) : null}
-          <Text modifiers={[font({ size: 14, weight: 'semibold' }), foregroundStyle('#7DB3FF')]}>
-            {props.boarding.length > 0 ? props.boarding : props.when}
-          </Text>
         </HStack>
       ),
-      minimal: (
-        <Text
-          modifiers={[
-            font({ size: 13, weight: 'heavy' }),
-            foregroundStyle('#FFFFFF'),
-            frame({ width: 22, height: 22 }),
-            background(logo, shapes.roundedRectangle({ cornerRadius: 6 })),
-          ]}
-        >
-          S
+      compactTrailing: (
+        <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>
+          {[props.gate.length > 0 ? `Gate ${props.gate}` : '', props.boarding.length > 0 ? props.boarding : props.when].filter((x) => x.length > 0).join(' · ')}
         </Text>
       ),
+      minimal:
+        props.logo.length > 0 ? (
+          <Image uiImage={props.logo} modifiers={[resizable(), frame({ width: 20, height: 20 }), cornerRadius(5)]} />
+        ) : (
+          <Text
+            modifiers={[
+              font({ size: 12, weight: 'heavy' }),
+              foregroundStyle('#FFFFFF'),
+              frame({ width: 20, height: 20 }),
+              background(logo, shapes.roundedRectangle({ cornerRadius: 5 })),
+            ]}
+          >
+            S
+          </Text>
+        ),
       expandedLeading: (
         <Text modifiers={[font({ size: 17, weight: 'heavy' }), foregroundStyle('#F4F4F0'), padding({ leading: 8 })]}>
           {route ? `${props.from} → ${props.to}` : props.flightNo}

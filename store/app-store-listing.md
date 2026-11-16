@@ -50,8 +50,9 @@ Copy each part into App Store Connect → Apps → Stash. Character limits are A
 
 > tickets,boarding pass,ferry,train,QR code,gig,event,travel,visa,airbnb,stay,check-in,reminder
 
+**App Store:** https://apps.apple.com/us/app/stash-tickets/id6828099685
 **Support URL:** https://jesjg.github.io/stash-app/support/
-**Marketing URL:** (leave empty)
+**Marketing URL:** https://jesjg.github.io/stash-app/ (optional)
 **Privacy Policy URL:** https://jesjg.github.io/stash-app/privacy/
 **Copyright:** 2026 [your full name]
 

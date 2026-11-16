@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { create } from 'qrcode';
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { colors } from '../theme';
 import type { Ticket } from '../lib/types';
@@ -51,6 +51,7 @@ export function CodeView({ ticket, size }: Props) {
   const uri = whole ? ticket.pageUri : code.cropUri || ticket.pageUri;
   const wide = !whole && code?.symbology === 'pdf417';
   if (!whole && code && SQUARE.has(code.symbology)) return <TrimmedCrop uri={uri} size={size} />;
+  if (wide) return <WideCrop uri={uri} size={size} />;
   return (
     <View style={styles.quiet}>
       <Image
@@ -111,6 +112,50 @@ function TrimmedCrop({ uri, size }: { uri: string; size: number }) {
   );
 }
 
+/**
+ * PDF417 (paper boarding passes): only the barcode, on white, and wide enough to scan.
+ * The scanner's margin is 12% of the code's longer side (its width) plus 8px, each side; most of
+ * it is trimmed off, leaving a thin white quiet zone, so the printed paper around it doesn't show.
+ */
+function WideCrop({ uri, size }: { uri: string; size: number }) {
+  const { width: screen } = useWindowDimensions();
+  const [crop, setCrop] = useState<{ w: number; h: number } | null>(null);
+  // About 60% wider than other codes, never wider than the card.
+  const out = Math.min(Math.round(size * 1.6), screen - 112);
+  let view: { left: number; top: number; width: number; height: number } | null = null;
+  let height = Math.round(out * 0.45);
+  if (crop) {
+    const codeW = (crop.w - 16) / 1.24;
+    const pad = 0.12 * codeW + 8;
+    const codeH = crop.h - 2 * pad;
+    // Only trim when the numbers add up (the margin wasn't cut short at the picture's edge).
+    if (codeW > 0 && codeH > codeW * 0.08 && codeH < codeW * 0.9) {
+      const trim = pad * 0.9;
+      const iw = crop.w - 2 * trim;
+      const ih = crop.h - 2 * trim;
+      const scale = out / iw;
+      height = Math.round(ih * scale);
+      view = { left: -trim * scale, top: -trim * scale, width: crop.w * scale, height: crop.h * scale };
+    } else {
+      height = Math.round((out * crop.h) / crop.w);
+    }
+  }
+  return (
+    <View style={[styles.quiet, styles.wide]}>
+      <View style={{ width: out, height, overflow: 'hidden' }}>
+        <Image
+          source={{ uri }}
+          style={view ? { position: 'absolute', ...view } : { width: out, height }}
+          contentFit="contain"
+          transition={0}
+          onLoad={(e) => e.source.width && e.source.height && setCrop({ w: e.source.width, h: e.source.height })}
+        />
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   quiet: { backgroundColor: colors.paper, borderRadius: 10, padding: 10 },
+  wide: { paddingHorizontal: 14, paddingVertical: 12 },
 });

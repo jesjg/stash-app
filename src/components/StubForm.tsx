@@ -21,7 +21,7 @@ import { colors, font, label } from '../theme';
 import { CodeView } from './CodeView';
 import { Icon } from './Icon';
 import { ticketType } from '../lib/ticketTypes';
-import { flightInfo, withDetails } from '../lib/flight';
+import { checkInTime, flightInfo, withDetails } from '../lib/flight';
 
 export type StubFields = Pick<Stub, 'title' | 'kind' | 'date' | 'time' | 'stay' | 'details' | 'tickets' | 'reminder'>;
 
@@ -50,10 +50,10 @@ function reminderText(date: string, time?: string, flight?: boolean) {
   return `Reminder ${timeKey(at)} on ${day}${time ? (flight ? ' (2 hours before departure)' : ' (2h before)') : ''}`;
 }
 
-function flightReminderNote(date: string, time: string | undefined, on: boolean) {
-  if (!on) return 'No reminder or lock screen card for this flight.';
+function flightReminderNote(date: string, time: string | undefined, on: boolean, what = 'flight') {
+  if (!on) return `No reminder or lock screen card for this ${what}.`;
   if (reminderDate({ date, time }).getTime() < Date.now()) return reminderText(date, time, true);
-  return `${reminderText(date, time, true)}. Your flight shows on the lock screen on the day.`;
+  return `${reminderText(date, time, true)}. Your ${what} shows on the lock screen on the day.`;
 }
 
 /** A time row: a picker once there's a time, an "Add" button before. */
@@ -85,7 +85,7 @@ function TextRow({ label: name, value, onChange, placeholder, caps }: { label: s
   const ref = useRef<TextInput>(null);
   return (
     <View style={styles.boxRow}>
-      <Text style={styles.boxLabel}>{name}</Text>
+      <Text style={[styles.boxLabel, styles.noShrink]}>{name}</Text>
       <View style={[styles.editRow, styles.rowValue]}>
         <TextInput
           ref={ref}
@@ -136,6 +136,11 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
   const [company, setCompany] = useState(stub.details?.find((d) => d.label === 'Company')?.value ?? '');
   const isStay = kind === 'stay';
   const isFlight = kind === 'flight';
+  const isFerry = kind === 'ferry';
+  // Flights and ferries list every detail Stash read, each one editable, with Set a reminder.
+  const detailed = isFlight || isFerry;
+  const [ferryCheckIn, setFerryCheckIn] = useState(() => checkInTime(stub));
+  const [location, setLocation] = useState(stub.details?.find((d) => d.label === 'Location')?.value ?? '');
   // Flights: every detail Stash read, ready to check and change.
   const [flight, setFlight] = useState(() => flightInfo(stub));
   const setF = (patch: Partial<typeof flight>) => setFlight((f) => ({ ...f, ...patch }));
@@ -159,9 +164,17 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
   // Show the whole ticket while checking the details (the code alone hides them); tap to zoom.
   const page = stub.pageUris.find(Boolean) ?? first?.pageUri;
   // Shared details plus the first ticket's own (seat etc.); with several tickets, note that seats vary.
-  const readDetails = isFlight ? [] : [...(first?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company');
+  const readDetails = detailed ? [] : [...(first?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company');
   // The company is its own field: it becomes the name badge on the ticket.
   const details = () => {
+    if (isFerry) {
+      return withDetails(stub.details?.filter((d) => d.label !== 'Passenger'), {
+        Company: company,
+        'Check-in': ferryCheckIn,
+        Location: location,
+        Ref: flight.ref,
+      });
+    }
     if (isFlight) {
       return withDetails(stub.details?.filter((d) => !['Flight', 'Seat', 'Passenger'].includes(d.label)), {
         Company: company,
@@ -177,7 +190,14 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
   };
   // Flight number, seat and passenger belong to each ticket.
   const tickets = () =>
-    isFlight
+    isFerry
+      ? stub.tickets.map((t, i) => ({
+          ...t,
+          details: withDetails(t.details?.filter((d) => !['Ref', 'Company', 'Check-in', 'Location'].includes(d.label)), {
+            Passenger: flight.passengers[i],
+          }),
+        }))
+      : isFlight
       ? stub.tickets.map((t, i) => ({
           ...t,
           details: withDetails(t.details?.filter((d) => !['Boarding', 'Gate', 'Terminal', 'Ref', 'Company'].includes(d.label)), {
@@ -268,7 +288,7 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
           </View>
         </View>
         {page ? <Text style={styles.reminder}>Something not right? Tap the ticket to enlarge it and check the details.</Text> : null}
-        {!isStay && !isFlight && (
+        {!isStay && !detailed && (
           <View style={styles.box}>
             <View style={styles.inputRow}>
               <Text style={styles.inputLabel}>Company · shown on the ticket</Text>
@@ -366,6 +386,47 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
               {flightReminderNote(date, time, reminder)}
             </Text>
           </>
+        ) : isFerry ? (
+          <>
+            <View style={styles.field}>
+              <Text style={label}>Ferry details</Text>
+              <Text style={styles.checkNote}>Read from your ticket. Check each one and tap to change it.</Text>
+              <View style={styles.box}>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>Date</Text>
+                  {Platform.OS === 'ios' ? (
+                    <DateTimePicker value={toDate(date)} mode="date" display="compact" onChange={onDate} accentColor={colors.accent} />
+                  ) : (
+                    <Pressable onPress={() => openAndroid('date')} style={styles.valueBtn}>
+                      <Text style={styles.value}>{fmt.short(date)}</Text>
+                    </Pressable>
+                  )}
+                </View>
+                <View style={styles.divider} />
+                <TimeRow label="Check-in" date={date} value={ferryCheckIn} onChange={setFerryCheckIn} fallback={time ? minus(time, 30) : '08:30'} />
+                <View style={styles.divider} />
+                <TimeRow label="Departs" date={date} value={time} onChange={setTime} fallback={ferryCheckIn ? minus(ferryCheckIn, -30) : '09:00'} />
+                <View style={styles.divider} />
+                <TextRow label="Company" value={company} onChange={setCompany} placeholder="e.g. Ekajaya Fast Ferry" />
+                <View style={styles.divider} />
+                <TextRow label="Location" value={location} onChange={setLocation} placeholder="e.g. Yellow Bridge" />
+                {flight.passengers.map((p, i) => (
+                  <View key={`ferry-passenger-${i}`}>
+                    <View style={styles.divider} />
+                    <TextRow label={count > 1 ? `Passenger ${i + 1}` : 'Passenger'} value={p} onChange={(v) => setPassenger(i, v)} placeholder="Name" />
+                  </View>
+                ))}
+                <View style={styles.divider} />
+                <TextRow label="Booking ref" value={flight.ref ?? ''} onChange={(v) => setF({ ref: v })} placeholder="e.g. EKJ26106988" caps />
+                <View style={styles.divider} />
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>Set a reminder</Text>
+                  <Toggle value={reminder} onValueChange={setReminder} accessibilityLabel="Set a reminder" />
+                </View>
+              </View>
+            </View>
+            <Text style={styles.reminder}>{flightReminderNote(date, time, reminder, 'ferry')}</Text>
+          </>
         ) : (
         <View style={styles.box}>
           <View style={styles.boxRow}>
@@ -411,7 +472,7 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
           )}
         </View>
         )}
-        {!isFlight && (
+        {!detailed && (
         <Text style={styles.reminder}>
           {reminderText(date, time)}
           {filled.includes('date') || filled.includes('time')
@@ -540,7 +601,7 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
               stay: isStay ? stay : stub.stay,
               details: isStay ? stub.details : details(),
               tickets: tickets(),
-              reminder: isFlight ? reminder : stub.reminder,
+              reminder: detailed ? reminder : stub.reminder,
             })
           }
           style={({ pressed }) => [styles.save, pressed && { opacity: 0.85 }]}
@@ -594,6 +655,7 @@ const styles = StyleSheet.create({
   inputLabel: { ...font.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkFaint },
   input: { ...font.bodyBold, fontSize: 16, color: colors.ink, padding: 0, minHeight: 24 },
   rowValue: { flex: 1, justifyContent: 'flex-end', marginLeft: 16 },
+  noShrink: { flexShrink: 0 },
   rowInput: { flex: 1, textAlign: 'right' },
   checkNote: { fontSize: 13, color: colors.inkSoft, marginTop: -4 },
   reminder: { ...font.mono, fontSize: 12, color: colors.inkSoft, marginTop: -10 },

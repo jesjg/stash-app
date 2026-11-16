@@ -80,8 +80,11 @@ export default function TicketScreen() {
     if (!action || !opened || acted.current === `${id}-${action}`) return;
     acted.current = `${id}-${action}`;
     const st = opened.stay ?? {};
-    // Ferries: directions to where it leaves from ("Sanur Harbour").
-    const from = opened.kind === 'stay' ? undefined : routeEnds(opened.title)?.[0];
+    // Ferries: directions to the location on the ticket, else where it leaves from ("Sanur Harbour").
+    const from =
+      opened.kind === 'stay'
+        ? undefined
+        : (opened.details?.find((d) => d.label === 'Location')?.value ?? routeEnds(opened.title)?.[0]);
     const t = setTimeout(() => {
       if (action === 'directions' && opened.kind === 'stay' && st.address) openDirections(st.address);
       else if (action === 'directions' && from) openDirections(from);

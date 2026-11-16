@@ -126,7 +126,10 @@ async function propsFor(stub: Stub) {
     checkIn: st ? (stub.time ?? '') : '',
     doorCode: st?.doorCode ?? '',
     messageUrl: st?.phone ? `stubs://ticket/${stub.id}?do=message` : '',
-    directionsUrl: st?.address || ferry ? `stubs://ticket/${stub.id}?do=directions` : '',
+    directionsUrl:
+      st?.address || ferry || (stub.kind === 'ferry' && stub.details?.some((d) => d.label === 'Location'))
+        ? `stubs://ticket/${stub.id}?do=directions`
+        : '',
     kind: stub.kind,
     company: f?.company ?? stub.details?.find((d) => d.label === 'Company')?.value ?? '',
     flightNo: f?.flight ?? '',

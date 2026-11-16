@@ -70,7 +70,8 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
     const grey = '#6B6B70';
     const teal = '#3E7D6E';
     const tint = '#E3F2EE';
-    const button = '#6FB8A7';
+    // The ferry ticket's own green, for the Directions button.
+    const button = '#00BFA6';
     const route = props.fromPlace.length > 0 && props.toPlace.length > 0;
     return {
       banner: (
@@ -144,13 +145,12 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
             <Spacer />
             {props.directionsUrl.length > 0 ? (
               <Link destination={props.directionsUrl}>
-                <HStack
-                  spacing={6}
-                  modifiers={[padding({ horizontal: 16, vertical: 8 }), background(button, shapes.capsule())]}
-                >
-                  <Image systemName="mappin.and.ellipse" size={14} color="#FFFFFF" />
-                  <Text modifiers={[font({ size: 15, weight: 'semibold' }), foregroundStyle('#FFFFFF')]}>Directions</Text>
-                </HStack>
+                <Image
+                  systemName="location"
+                  size={18}
+                  color="#FFFFFF"
+                  modifiers={[frame({ width: 42, height: 42 }), background(button, shapes.circle())]}
+                />
               </Link>
             ) : null}
           </HStack>

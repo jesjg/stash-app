@@ -293,7 +293,7 @@ function StubRow({ stub, faded, countdown }: { stub: Stub; faded?: boolean; coun
       <View style={styles.rowTear} />
       <View style={styles.rowStub}>
         {big ? (
-          <Text style={styles.rowDays} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+          <Text style={[styles.rowDays, days <= 0 && countdown && styles.rowTime]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
             {big}
           </Text>
         ) : null}
@@ -393,10 +393,12 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 17, fontWeight: '800', letterSpacing: -0.3, color: '#FFFFFF' },
   rowMeta: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.9)' },
   rowTear: { width: 0, borderLeftWidth: 1.5, borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.6)' },
-  rowStub: { width: 64, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
+  rowStub: { width: 72, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
   rowDays: { fontSize: 22, lineHeight: 24, fontWeight: '800', color: '#FFFFFF', fontVariant: ['tabular-nums'] },
   rowDaysLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: '#FFFFFF' },
   rowDaysAlone: { fontSize: 13, letterSpacing: 1.2 },
+  // Today's time ("18:00") is wider than a day count: a little smaller so it fits the stub.
+  rowTime: { fontSize: 18, lineHeight: 22 },
   swipeAction: {
     width: 88,
     marginLeft: 10,

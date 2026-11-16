@@ -59,7 +59,13 @@ function cellsFor(stub: Stub, index: number): Cell[] {
       st.address ? { label: 'Address', value: st.address.split(',')[0], span: 2 } : null,
     ].filter((c): c is Cell => !!c);
   }
-  const all = [...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company' && d.label !== 'Flight');
+  let all = [...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company' && d.label !== 'Flight');
+  // Flights: the flight number matters more at the airport than the booking ref, so it takes its place.
+  if (stub.kind === 'flight') {
+    const flight = [...(stub.tickets[index]?.details ?? []), ...(stub.details ?? [])].find((d) => d.label === 'Flight');
+    all = all.filter((d) => d.label !== 'Ref');
+    if (flight) all.push({ label: 'Flight', value: flight.value });
+  }
   const isCode = (v: string) => v.length <= 8 && (/\d/.test(v) || v === v.toUpperCase());
   const seating = SEATING.flatMap((name) => all.filter((d) => d.label === name && isCode(d.value)));
   const timeLabel = isJourney(stub.kind) ? 'Departs' : stub.kind === 'activity' ? 'Start' : 'Time';

@@ -165,21 +165,18 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
               S
             </Text>
           )}
-          {props.flightNo.length > 0 ? (
-            <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>{props.flightNo}</Text>
+          {props.flightNo.length > 0 || props.gate.length > 0 ? (
+            <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>
+              {[props.flightNo, props.gate.length > 0 ? `Gate ${props.gate}` : ''].filter((x) => x.length > 0).join(' · ')}
+            </Text>
           ) : null}
         </HStack>
       ),
-      // Gate stacked over the time, so this side is no wider than the flight number and the island stays narrow.
+      // Left: icon, flight number and gate. Right: boarding time.
       compactTrailing: (
-        <VStack alignment="trailing" spacing={0}>
-          {props.gate.length > 0 ? (
-            <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>{`Gate ${props.gate}`}</Text>
-          ) : null}
-          <Text modifiers={[font({ size: 12, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>
-            {props.boarding.length > 0 ? props.boarding : props.when}
-          </Text>
-        </VStack>
+        <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>
+          {props.boarding.length > 0 ? props.boarding : props.when}
+        </Text>
       ),
       minimal:
         props.logo.length > 0 ? (

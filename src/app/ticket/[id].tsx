@@ -105,6 +105,14 @@ export default function TicketScreen() {
     const sample = !!stub.sample;
     const isStay = stub.kind === 'stay';
     const items: { label: string; run: () => void; destructive?: boolean }[] = [
+      // Edit first: the most used, since what Stash read sometimes needs checking.
+      {
+        label: 'Edit details',
+        run: () =>
+          stub.kind === 'stay'
+            ? router.push({ pathname: '/new-stay', params: { edit: stub.id } })
+            : router.push({ pathname: '/edit/[id]', params: { id: stub.id } }),
+      },
       ...(isStay
         ? [
             {
@@ -157,13 +165,6 @@ export default function TicketScreen() {
               },
             },
           ]),
-      {
-        label: 'Edit details',
-        run: () =>
-          stub.kind === 'stay'
-            ? router.push({ pathname: '/new-stay', params: { edit: stub.id } })
-            : router.push({ pathname: '/edit/[id]', params: { id: stub.id } }),
-      },
       {
         label: 'Delete',
         destructive: true,

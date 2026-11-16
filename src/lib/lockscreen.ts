@@ -1,5 +1,5 @@
 import { File } from 'expo-file-system';
-import { Platform } from 'react-native';
+import { Image, Platform } from 'react-native';
 import { dayKey, toDate } from './dates';
 import { getState, setLockCard } from './store';
 import { flightInfo } from './flight';
@@ -74,6 +74,23 @@ async function codeImage(stub: Stub): Promise<string> {
   }
 }
 
+/** The Stash app icon, copied where the Live Activity can read it ('' if it can't be). */
+async function logoImage(): Promise<string> {
+  const dir = widgetsDir();
+  if (!dir) return '';
+  try {
+    const src = Image.resolveAssetSource(require('../../assets/live-logo.png'))?.uri;
+    if (!src) return '';
+    const dest = new File(dir.endsWith('/') ? dir : `${dir}/`, 'stash-logo.png');
+    if (dest.exists) return dest.uri;
+    if (/^https?:/.test(src)) await File.downloadFileAsync(src, dest);
+    else await new File(src).copy(dest);
+    return dest.uri;
+  } catch {
+    return '';
+  }
+}
+
 async function propsFor(stub: Stub) {
   const kind = KINDS.find((k) => k.id === stub.kind)?.label ?? 'Ticket';
   const n = stub.tickets.length;
@@ -82,6 +99,7 @@ async function propsFor(stub: Stub) {
   const f = stub.kind === 'flight' ? flightInfo(stub) : null;
   const seats = f?.seats.filter(Boolean) ?? [];
   return {
+    logo: await logoImage(),
     kind: stub.kind,
     company: f?.company ?? '',
     flightNo: f?.flight ?? '',

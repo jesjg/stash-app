@@ -182,12 +182,19 @@ export function discardDraft() {
 
 // ---------- stubs ----------
 
-export type EditableFields = Pick<Stub, 'title' | 'kind' | 'date' | 'time' | 'stay' | 'color' | 'holo' | 'details'>;
+export type EditableFields = Pick<Stub, 'title' | 'kind' | 'date' | 'time' | 'stay' | 'color' | 'holo' | 'details'> &
+  Partial<Pick<Stub, 'tickets' | 'reminder'>>;
 
 export async function saveDraft(fields: EditableFields) {
   const draft = state.draft;
   if (!draft) return null;
-  const stub: Stub = { ...draft, ...fields, title: fields.title.trim() || (fields.kind === 'stay' ? 'Stay' : 'Ticket'), createdAt: Date.now() };
+  const stub: Stub = {
+    ...draft,
+    ...fields,
+    tickets: fields.tickets ?? draft.tickets,
+    title: fields.title.trim() || (fields.kind === 'stay' ? 'Stay' : 'Ticket'),
+    createdAt: Date.now(),
+  };
   stub.reminderId = await scheduleReminder(stub);
   // The first real ticket replaces the demo one.
   const samples = state.stubs.filter((s) => s.sample);
@@ -201,7 +208,7 @@ export async function updateStub(id: string, fields: Partial<EditableFields>) {
   const current = state.stubs.find((s) => s.id === id);
   if (!current) return;
   await cancelReminder(current.reminderId);
-  const next: Stub = { ...current, ...fields };
+  const next: Stub = { ...current, ...fields, tickets: fields.tickets ?? current.tickets };
   next.reminderId = await scheduleReminder(next);
   set({ stubs: sortStubs(state.stubs.map((s) => (s.id === id ? next : s))) });
   persist();

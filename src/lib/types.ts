@@ -82,6 +82,8 @@ export type Stub = {
   stay?: Stay;
   /** Holographic foil finish on this ticket's card. */
   holo?: boolean;
+  /** The reminder and lock screen card for this ticket. On unless turned off (false). */
+  reminder?: boolean;
   /** Colour picked for this ticket (see palette.ts); otherwise the app colour. */
   color?: import('./palette').ColorId;
   /** Photo the person chose for the card on the home screen. */

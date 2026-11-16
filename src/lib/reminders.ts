@@ -2,6 +2,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { toDate } from './dates';
+import { flightInfo, flightLine } from './flight';
 import type { Stub } from './types';
 
 /** Without a time: 8am on the day. With a time: 2 hours before. */
@@ -71,7 +72,7 @@ async function attachmentCopy(stub: Stub): Promise<string | undefined> {
 }
 
 export async function scheduleReminder(stub: Stub): Promise<string | undefined> {
-  if (Platform.OS === 'web') return undefined;
+  if (Platform.OS === 'web' || stub.reminder === false) return undefined;
   const at = reminderDate(stub);
   if (at.getTime() <= Date.now() + 30_000) return undefined;
   // Permission is asked for by Stash's own pop-up first (see NotifyPrompt), never mid-save.
@@ -79,17 +80,27 @@ export async function scheduleReminder(stub: Stub): Promise<string | undefined> 
 
   const count = stub.tickets.length;
   const code = await attachmentCopy(stub);
+  const flight = stub.kind === 'flight' ? flightInfo(stub) : null;
+  // Flights: "NZ 104 · SYD → AKL · boards 13:55" / "Gate 51 · Seat 23A · Terminal I".
+  const flightTitle = flight
+    ? [flight.flight, flight.from && flight.to ? `${flight.from} → ${flight.to}` : stub.title, flight.boarding ? `boards ${flight.boarding}` : stub.time ? `departs ${stub.time}` : '']
+        .filter(Boolean)
+        .join(' · ')
+    : '';
+  const flightBody = flight ? flightLine(flight) : '';
   try {
     return await Notifications.scheduleNotificationAsync({
       content: {
-        title:
-          stub.kind === 'stay'
+        title: flight
+          ? flightTitle
+          : stub.kind === 'stay'
             ? `Check-in today: ${stub.title}${stub.time ? ` from ${stub.time}` : ''}`
             : stub.time
               ? `${stub.title} at ${stub.time}`
               : `Today: ${stub.title}`,
-        body:
-          stub.kind === 'stay'
+        body: flight
+          ? [flightBody, 'Tap to show your boarding pass.'].filter(Boolean).join('. ')
+          : stub.kind === 'stay'
             ? [stub.stay?.address?.split(',').slice(0, 2).join(','), 'Tap for directions, door code and Wi-Fi.'].filter(Boolean).join('. ')
             : stub.details?.find((d) => d.label === 'Info')?.value ??
               (count > 1 ? `Tap to open your ${count} tickets.` : 'Tap to open your ticket.'),

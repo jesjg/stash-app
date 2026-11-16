@@ -60,13 +60,8 @@ export function Home() {
   const live = useMemo(() => [...groups.today, ...groups.upcoming], [groups]);
   // Next up is tickets only: stays are in the list below.
   const next = live.filter((s) => s.kind !== 'stay').slice(0, NEXT_COUNT);
-  // Everything ahead, counting down (plus anything today that didn't fit in the carousel).
-  // Stays always sit here, today's included, since they're not in Next up.
-  const comingUp = useMemo(
-    () => live.filter((s) => s.kind === 'stay' || s.date > today || !next.some((n) => n.id === s.id)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- next comes from live
-    [live, today],
-  );
+  // Everything today and ahead, counting down: tickets in Next up stay in this list too.
+  const comingUp = live;
   // First launch: show how Stash works.
   const introSeen = useStore((s) => s.settings.introSeen);
   useEffect(() => {

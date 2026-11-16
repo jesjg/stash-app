@@ -267,7 +267,8 @@ function StubRow({ stub, faded, countdown }: { stub: Stub; faded?: boolean; coun
   const days = daysBetween(dayKey(), stub.date);
   const [big, small] = countdown
     ? days <= 0
-      ? ['0', 'TODAY']
+      ? // Today: the time instead of a 0 (or just TODAY when there's no time).
+        [stub.time ?? '', 'TODAY']
       : [String(days), days === 1 ? 'DAY' : 'DAYS']
     : [String(Number(fmt.dayNum(stub.date))), fmt.mon(stub.date).toUpperCase()];
   const meta = [kindLabel(stub), fmt.short(stub.date)].join(' · ');
@@ -291,8 +292,12 @@ function StubRow({ stub, faded, countdown }: { stub: Stub; faded?: boolean; coun
       </View>
       <View style={styles.rowTear} />
       <View style={styles.rowStub}>
-        <Text style={styles.rowDays}>{big}</Text>
-        <Text style={styles.rowDaysLabel}>{small}</Text>
+        {big ? (
+          <Text style={styles.rowDays} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+            {big}
+          </Text>
+        ) : null}
+        <Text style={[styles.rowDaysLabel, !big && styles.rowDaysAlone]}>{small}</Text>
       </View>
     </Pressable>
   );
@@ -391,6 +396,7 @@ const styles = StyleSheet.create({
   rowStub: { width: 64, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
   rowDays: { fontSize: 22, lineHeight: 24, fontWeight: '800', color: '#FFFFFF', fontVariant: ['tabular-nums'] },
   rowDaysLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: '#FFFFFF' },
+  rowDaysAlone: { fontSize: 13, letterSpacing: 1.2 },
   swipeAction: {
     width: 88,
     marginLeft: 10,

@@ -2,7 +2,8 @@ import { Image } from 'expo-image';
 import { create } from 'qrcode';
 import { useMemo, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import { drawingSVG, pdf417 } from '@bwip-js/generic';
+import Svg, { Path, SvgXml } from 'react-native-svg';
 import { colors } from '../theme';
 import type { Ticket } from '../lib/types';
 
@@ -23,6 +24,20 @@ function qrPath(payload: string): { d: string; size: number } | null {
   }
 }
 
+/** A PDF417 (boarding pass) drawn fresh from its contents: perfectly sharp, whatever the photo was like. */
+function pdf417Svg(payload: string): { xml: string; ratio: number } | null {
+  try {
+    // PDF417 options (columns, row height) aren't in bwip-js's general option types.
+    const opts = { bcid: 'pdf417', text: payload, columns: 4, rowheight: 5, paddingwidth: 0, paddingheight: 0 };
+    const xml = pdf417(opts, drawingSVG());
+    const box = xml.match(/viewBox="0 0 (\d+(?:\.\d+)?) (\d+(?:\.\d+)?)"/);
+    if (!box) return null;
+    return { xml, ratio: Number(box[2]) / Number(box[1]) };
+  } catch {
+    return null;
+  }
+}
+
 type Props = { ticket: Ticket; size: number };
 
 /**
@@ -35,6 +50,21 @@ export function CodeView({ ticket, size }: Props) {
     () => (code?.symbology === 'qr' && code.payload ? qrPath(code.payload) : null),
     [code],
   );
+
+  const drawn = useMemo(
+    () => (code?.symbology === 'pdf417' && code.payload ? pdf417Svg(code.payload) : null),
+    [code],
+  );
+  const { width: screen } = useWindowDimensions();
+
+  if (drawn) {
+    const w = Math.min(Math.round(size * 1.6), screen - 112);
+    return (
+      <View style={[styles.quiet, styles.wide]}>
+        <SvgXml xml={drawn.xml} width={w} height={Math.round(w * drawn.ratio)} />
+      </View>
+    );
+  }
 
   if (redraw) {
     return (

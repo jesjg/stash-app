@@ -21,8 +21,9 @@ import { colors, font, label } from '../theme';
 import { CodeView } from './CodeView';
 import { Icon } from './Icon';
 import { ticketType } from '../lib/ticketTypes';
+import { flightInfo, withDetails } from '../lib/flight';
 
-export type StubFields = Pick<Stub, 'title' | 'kind' | 'date' | 'time' | 'stay' | 'details'>;
+export type StubFields = Pick<Stub, 'title' | 'kind' | 'date' | 'time' | 'stay' | 'details' | 'tickets' | 'reminder'>;
 
 const STAY_FIELDS: { key: Exclude<keyof Stay, 'arrival'>; label: string; placeholder: string; multiline?: boolean; mono?: boolean; keyboard?: 'phone-pad' }[] = [
   { key: 'address', label: 'Address', placeholder: 'Street, town, postcode', multiline: true },
@@ -42,12 +43,73 @@ type Props = {
   onCancel: () => void;
 };
 
-function reminderText(date: string, time?: string) {
+function reminderText(date: string, time?: string, flight?: boolean) {
   const at = reminderDate({ date, time });
   if (at.getTime() < Date.now()) return 'No reminder: that time has already passed.';
   const day = dayKey(at) === date ? fmt.short(date) : fmt.short(dayKey(at));
-  return `Reminder ${timeKey(at)} on ${day}${time ? ' (2h before)' : ''}`;
+  return `Reminder ${timeKey(at)} on ${day}${time ? (flight ? ' (2 hours before departure)' : ' (2h before)') : ''}`;
 }
+
+function flightReminderNote(date: string, time: string | undefined, on: boolean) {
+  if (!on) return 'No reminder or lock screen card for this flight.';
+  if (reminderDate({ date, time }).getTime() < Date.now()) return reminderText(date, time, true);
+  return `${reminderText(date, time, true)}. Your flight shows on the lock screen on the day.`;
+}
+
+/** A time row: a picker once there's a time, an "Add" button before. */
+function TimeRow({ label: name, date, value, onChange, fallback }: { label: string; date: string; value?: string; onChange: (v: string) => void; fallback: string }) {
+  const pick = (_: DateTimePickerEvent, d?: Date) => d && onChange(timeKey(d));
+  return (
+    <View style={styles.boxRow}>
+      <Text style={styles.boxLabel}>{name}</Text>
+      {value == null ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={`Add ${name.toLowerCase()} time`} onPress={() => onChange(fallback)} style={styles.valueBtn}>
+          <Text style={[styles.value, { color: colors.accent }]}>Add</Text>
+        </Pressable>
+      ) : Platform.OS === 'ios' ? (
+        <DateTimePicker value={toDate(date, value)} mode="time" display="compact" onChange={pick} accentColor={colors.accent} minuteInterval={5} />
+      ) : (
+        <Pressable
+          onPress={() => DateTimePickerAndroid.open({ value: toDate(date, value), mode: 'time', is24Hour: true, onChange: pick })}
+          style={styles.valueBtn}
+        >
+          <Text style={styles.value}>{value}</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+/** A labelled text row with a pencil, like the Company box. */
+function TextRow({ label: name, value, onChange, placeholder, caps }: { label: string; value: string; onChange: (v: string) => void; placeholder: string; caps?: boolean }) {
+  const ref = useRef<TextInput>(null);
+  return (
+    <View style={styles.boxRow}>
+      <Text style={styles.boxLabel}>{name}</Text>
+      <View style={[styles.editRow, styles.rowValue]}>
+        <TextInput
+          ref={ref}
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor="#A8A8A0"
+          autoCapitalize={caps ? 'characters' : 'words'}
+          autoCorrect={false}
+          maxLength={60}
+          style={[styles.input, styles.rowInput]}
+          accessibilityLabel={name}
+        />
+        <EditButton label={`Edit ${name.toLowerCase()}`} onPress={() => ref.current?.focus()} />
+      </View>
+    </View>
+  );
+}
+
+const minus = (time: string, minutes: number) => {
+  const [h, m] = time.split(':').map(Number);
+  const t = (h * 60 + m - minutes + 24 * 60) % (24 * 60);
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+};
 
 /** A pencil beside text you can change; tapping it puts the cursor in the box. */
 // New ticket spec: white screen, light grey groups.
@@ -73,6 +135,13 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
   const [stay, setStay] = useState<Stay>(stub.stay ?? {});
   const [company, setCompany] = useState(stub.details?.find((d) => d.label === 'Company')?.value ?? '');
   const isStay = kind === 'stay';
+  const isFlight = kind === 'flight';
+  // Flights: every detail Stash read, ready to check and change.
+  const [flight, setFlight] = useState(() => flightInfo(stub));
+  const setF = (patch: Partial<typeof flight>) => setFlight((f) => ({ ...f, ...patch }));
+  const setSeat = (i: number, v: string) => setFlight((f) => ({ ...f, seats: f.seats.map((s, k) => (k === i ? v : s)) }));
+  const setPassenger = (i: number, v: string) => setFlight((f) => ({ ...f, passengers: f.passengers.map((s, k) => (k === i ? v : s)) }));
+  const [reminder, setReminder] = useState(stub.reminder !== false);
   const setStayField = (key: Exclude<keyof Stay, 'arrival'>, value: string | undefined) => setStay((s) => ({ ...s, [key]: value || undefined }));
   const onOutDate = (_: DateTimePickerEvent, d?: Date) => d && setStayField('checkOutDate', dayKey(d));
   const onOutTime = (_: DateTimePickerEvent, d?: Date) => d && setStayField('checkOutTime', timeKey(d));
@@ -90,13 +159,34 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
   // Show the whole ticket while checking the details (the code alone hides them); tap to zoom.
   const page = stub.pageUris.find(Boolean) ?? first?.pageUri;
   // Shared details plus the first ticket's own (seat etc.); with several tickets, note that seats vary.
-  const readDetails = [...(first?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company');
+  const readDetails = isFlight ? [] : [...(first?.details ?? []), ...(stub.details ?? [])].filter((d) => d.label !== 'Company');
   // The company is its own field: it becomes the name badge on the ticket.
   const details = () => {
+    if (isFlight) {
+      return withDetails(stub.details?.filter((d) => !['Flight', 'Seat', 'Passenger'].includes(d.label)), {
+        Company: company,
+        Boarding: flight.boarding,
+        Gate: flight.gate,
+        Terminal: flight.terminal,
+        Ref: flight.ref,
+      });
+    }
     const rest = (stub.details ?? []).filter((d) => d.label !== 'Company');
     const name = company.trim();
     return name ? [{ label: 'Company', value: name.slice(0, 40) }, ...rest] : rest.length ? rest : undefined;
   };
+  // Flight number, seat and passenger belong to each ticket.
+  const tickets = () =>
+    isFlight
+      ? stub.tickets.map((t, i) => ({
+          ...t,
+          details: withDetails(t.details?.filter((d) => !['Boarding', 'Gate', 'Terminal', 'Ref', 'Company'].includes(d.label)), {
+            Flight: flight.flight,
+            Seat: flight.seats[i],
+            Passenger: flight.passengers[i],
+          }),
+        }))
+      : stub.tickets;
   const filled = stub.autofill ?? [];
   const found = !!first?.code || isStay;
   const pages = stub.pageUris.length;
@@ -178,7 +268,7 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
           </View>
         </View>
         {page ? <Text style={styles.reminder}>Something not right? Tap the ticket to enlarge it and check the details.</Text> : null}
-        {!isStay && (
+        {!isStay && !isFlight && (
           <View style={styles.box}>
             <View style={styles.inputRow}>
               <Text style={styles.inputLabel}>Company · shown on the ticket</Text>
@@ -223,6 +313,58 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
           </View>
         </View>
 
+        {isFlight ? (
+          <>
+            <View style={styles.field}>
+              <Text style={label}>Flight details</Text>
+              <Text style={styles.checkNote}>Read from your ticket. Check each one and tap to change it.</Text>
+              <View style={styles.box}>
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>Date</Text>
+                  {Platform.OS === 'ios' ? (
+                    <DateTimePicker value={toDate(date)} mode="date" display="compact" onChange={onDate} accentColor={colors.accent} />
+                  ) : (
+                    <Pressable onPress={() => openAndroid('date')} style={styles.valueBtn}>
+                      <Text style={styles.value}>{fmt.short(date)}</Text>
+                    </Pressable>
+                  )}
+                </View>
+                <View style={styles.divider} />
+                <TimeRow label="Boarding" date={date} value={flight.boarding} onChange={(v) => setF({ boarding: v })} fallback={time ? minus(time, 40) : '09:00'} />
+                <View style={styles.divider} />
+                <TimeRow label="Departs" date={date} value={time} onChange={setTime} fallback={flight.boarding ? minus(flight.boarding, -40) : '10:00'} />
+                <View style={styles.divider} />
+                <TextRow label="Gate" value={flight.gate ?? ''} onChange={(v) => setF({ gate: v })} placeholder="e.g. 51" caps />
+                {flight.seats.map((s, i) => (
+                  <View key={`seat-${i}`}>
+                    <View style={styles.divider} />
+                    <TextRow label={count > 1 ? `Seat ${i + 1}` : 'Seat'} value={s} onChange={(v) => setSeat(i, v)} placeholder="e.g. 23A" caps />
+                  </View>
+                ))}
+                <View style={styles.divider} />
+                <TextRow label="Terminal" value={flight.terminal ?? ''} onChange={(v) => setF({ terminal: v })} placeholder="e.g. 1" caps />
+                <View style={styles.divider} />
+                <TextRow label="Ref" value={flight.ref ?? ''} onChange={(v) => setF({ ref: v })} placeholder="Booking reference" caps />
+                {flight.passengers.map((p, i) => (
+                  <View key={`passenger-${i}`}>
+                    <View style={styles.divider} />
+                    <TextRow label={count > 1 ? `Passenger ${i + 1}` : 'Passenger'} value={p} onChange={(v) => setPassenger(i, v)} placeholder="Name" />
+                  </View>
+                ))}
+                <View style={styles.divider} />
+                <TextRow label="Company" value={company} onChange={setCompany} placeholder="e.g. Air New Zealand" />
+                <View style={styles.divider} />
+                <View style={styles.boxRow}>
+                  <Text style={styles.boxLabel}>Set a reminder</Text>
+                  <Toggle value={reminder} onValueChange={setReminder} accessibilityLabel="Set a reminder" />
+                </View>
+              </View>
+            </View>
+            <Text style={styles.reminder}>
+              {flightReminderNote(date, time, reminder)}
+            </Text>
+          </>
+        ) : (
         <View style={styles.box}>
           <View style={styles.boxRow}>
             <Text style={styles.boxLabel}>{isStay ? 'Check-in' : 'Date'}</Text>
@@ -266,12 +408,15 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
             </>
           )}
         </View>
+        )}
+        {!isFlight && (
         <Text style={styles.reminder}>
           {reminderText(date, time)}
           {filled.includes('date') || filled.includes('time')
             ? ` ${filled.includes('date') && filled.includes('time') ? 'Date and time' : filled.includes('date') ? 'Date' : 'Time'} read from the ticket.`
             : ''}
         </Text>
+        )}
         {isStay && (
           <>
             <View style={styles.box}>
@@ -384,7 +529,18 @@ export function StubForm({ heading, stub, saveLabel, onSave, onCancel }: Props) 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => onSave({ title, kind, date, time, stay: isStay ? stay : stub.stay, details: isStay ? stub.details : details() })}
+          onPress={() =>
+            onSave({
+              title,
+              kind,
+              date,
+              time,
+              stay: isStay ? stay : stub.stay,
+              details: isStay ? stub.details : details(),
+              tickets: tickets(),
+              reminder: isFlight ? reminder : stub.reminder,
+            })
+          }
           style={({ pressed }) => [styles.save, pressed && { opacity: 0.85 }]}
         >
           <Text style={styles.saveText}>{saveLabel}</Text>
@@ -435,6 +591,9 @@ const styles = StyleSheet.create({
   inputRow: { paddingVertical: 12, gap: 4 },
   inputLabel: { ...font.mono, fontSize: 10, letterSpacing: 1.2, textTransform: 'uppercase', color: colors.inkFaint },
   input: { ...font.bodyBold, fontSize: 16, color: colors.ink, padding: 0, minHeight: 24 },
+  rowValue: { flex: 1, justifyContent: 'flex-end', marginLeft: 16 },
+  rowInput: { flex: 1, textAlign: 'right' },
+  checkNote: { fontSize: 13, color: colors.inkSoft, marginTop: -4 },
   reminder: { ...font.mono, fontSize: 12, color: colors.inkSoft, marginTop: -10 },
   footer: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 20, paddingTop: 12, backgroundColor: SCREEN },
   save: { height: 56, borderRadius: 999, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },

@@ -2,6 +2,7 @@ import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
 import { dayKey, toDate } from './dates';
 import { getState, setLockCard } from './store';
+import { flightInfo } from './flight';
 import { KINDS, type Detail, type Stub } from './types';
 
 type Activity = typeof import('../live/TicketActivity').default;
@@ -34,7 +35,7 @@ function pick(stubs: Stub[]): Stub | null {
   const today = dayKey();
   const now = Date.now();
   const candidates = stubs.filter((s) => {
-    if (s.date !== today || s.usedAt) return false;
+    if (s.date !== today || s.usedAt || s.reminder === false) return false;
     if (!s.time) return true;
     return toDate(s.date, s.time).getTime() + LINGER_MS > now;
   });
@@ -77,7 +78,21 @@ async function propsFor(stub: Stub) {
   const kind = KINDS.find((k) => k.id === stub.kind)?.label ?? 'Ticket';
   const n = stub.tickets.length;
   const first = stub.tickets[0];
+  // Flights get their own card: airline, flight number, route, boarding, gate, seat and terminal.
+  const f = stub.kind === 'flight' ? flightInfo(stub) : null;
+  const seats = f?.seats.filter(Boolean) ?? [];
   return {
+    kind: stub.kind,
+    company: f?.company ?? '',
+    flightNo: f?.flight ?? '',
+    from: f?.from ?? '',
+    to: f?.to ?? '',
+    boarding: f?.boarding ?? '',
+    gate: f?.gate ?? '',
+    seat: seats.length > 2 ? `${seats[0]} +${seats.length - 1}` : seats.join(', '),
+    terminal: f?.terminal ?? '',
+    // When boarding starts, for "Boards in 40 min" (0 if unknown).
+    boardsAt: f?.boarding ? toDate(stub.date, f.boarding).getTime() : 0,
     title: stub.title.toUpperCase(),
     label: stub.kind === 'stay' ? 'CHECK-IN' : `${kind}${n > 1 ? ` · ${n} TICKETS` : ''}`.toUpperCase(),
     when: stub.time ?? 'Today',

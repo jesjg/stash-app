@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CodeView } from '../../components/CodeView';
 import { messageHost, openDirections, StayCard } from '../../components/StayCard';
+import { routeEnds } from '../../lib/flight';
 import { Icon } from '../../components/Icon';
 import { fitCode, WalletTicket } from '../../components/WalletTicket';
 import { RoundButton } from '../../components/RoundButton';
@@ -76,11 +77,14 @@ export default function TicketScreen() {
   const acted = useRef<string | null>(null);
   useEffect(() => {
     const opened = all.find((x) => x.id === id);
-    if (!action || !opened || opened.kind !== 'stay' || acted.current === `${id}-${action}`) return;
+    if (!action || !opened || acted.current === `${id}-${action}`) return;
     acted.current = `${id}-${action}`;
     const st = opened.stay ?? {};
+    // Ferries: directions to where it leaves from ("Sanur Harbour").
+    const from = opened.kind === 'stay' ? undefined : routeEnds(opened.title)?.[0];
     const t = setTimeout(() => {
-      if (action === 'directions' && st.address) openDirections(st.address);
+      if (action === 'directions' && opened.kind === 'stay' && st.address) openDirections(st.address);
+      else if (action === 'directions' && from) openDirections(from);
       else if (action === 'message' && st.phone) messageHost(st.phone, st.host);
     }, 450);
     return () => clearTimeout(t);

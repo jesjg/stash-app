@@ -40,6 +40,8 @@ const LABELS: LabelDef[] = [
   { label: 'Deck', wordValues: true, words: ['deck', 'class'] },
   { label: 'Doors', words: ['doors', 'doors open', 'gates open', 'einlass', 'check-in closes'], value: TIME_VALUE },
   { label: 'Boarding', words: ['boarding', 'boarding time', 'boards', 'boarding starts'], value: TIME_VALUE },
+  // Ferries and buses: "Check-in 08:30", "Report time 08:30".
+  { label: 'Check-in', words: ['check-in', 'check in', 'check-in time', 'check in time', 'report time', 'reporting time'], value: TIME_VALUE },
   { label: 'Gate closes', words: ['gate closes', 'gate close', 'gate closing', 'gate closure'], value: TIME_VALUE },
   { label: 'Departs', words: ['depart', 'departs', 'departure', 'departure time', 'dep time', 'std', 'abfahrt', 'partenza', 'salida'], value: TIME_VALUE },
   { label: 'Steps', wordValues: true, words: ['steps', 'boarding steps', 'board via', 'boarding door'] },

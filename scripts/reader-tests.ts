@@ -69,7 +69,7 @@ for (const split of [false, true]) {
     ['ref', value('Ref'), 'EKJ26107640'],
     ['passenger 1', value('Passenger', got.perTicket[0]), 'Jes Jones Gardner'],
     ['passenger 2', value('Passenger', got.perTicket[1]), 'Gabija Dubickaite'],
-    ['no stray details', [...got.shared, ...got.perTicket.flat()].map((d) => d.label).filter((l) => !['Company', 'Ref', 'Passenger'].includes(l)).join(','), ''],
+    ['no stray details', [...got.shared, ...got.perTicket.flat()].map((d) => d.label).filter((l) => !['Company', 'Ref', 'Passenger', 'Check-in'].includes(l)).join(','), ''],
   ];
   for (const [field, g, w] of check) {
     if (g !== w) {
@@ -142,7 +142,7 @@ for (const split of [false, true]) {
     ['title', got.title, 'Lembongan → Gili Trawangan'],
     ['date', got.date, '2026-11-19'],
     ['time', got.time, '09:00'],
-    ['details', labels, 'Company,Passenger,Passenger,Ref'],
+    ['details', labels, 'Check-in,Company,Passenger,Passenger,Ref'],
   ];
   for (const [field, g, w] of check) {
     if (g !== w) {

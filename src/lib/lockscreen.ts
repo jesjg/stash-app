@@ -2,7 +2,7 @@ import { File } from 'expo-file-system';
 import { Image, Platform } from 'react-native';
 import { dayKey, toDate } from './dates';
 import { getState, setLockCard } from './store';
-import { flightInfo } from './flight';
+import { checkInTime, flightInfo, routeEnds } from './flight';
 import { KINDS, type Detail, type Stub } from './types';
 
 type Activity = typeof import('../live/TicketActivity').default;
@@ -114,16 +114,21 @@ async function propsFor(stub: Stub) {
   const f = stub.kind === 'flight' ? flightInfo(stub) : null;
   const seats = f?.seats.filter(Boolean) ?? [];
   const st = stub.kind === 'stay' ? (stub.stay ?? {}) : null;
+  const ferry = stub.kind === 'ferry' ? routeEnds(stub.title) : null;
   return {
+    // Ferries: from and to in words, when to check in, and directions to where it leaves from.
+    fromPlace: ferry?.[0] ?? '',
+    toPlace: ferry?.[1] ?? '',
+    ferryCheckIn: stub.kind === 'ferry' ? (checkInTime(stub) ?? '') : '',
     logo: await logoImage(),
     // Stays: where, check-in, the door code, and buttons that open Stash to message the host or get directions.
     place: st ? townOf(st.address) : '',
     checkIn: st ? (stub.time ?? '') : '',
     doorCode: st?.doorCode ?? '',
     messageUrl: st?.phone ? `stubs://ticket/${stub.id}?do=message` : '',
-    directionsUrl: st?.address ? `stubs://ticket/${stub.id}?do=directions` : '',
+    directionsUrl: st?.address || ferry ? `stubs://ticket/${stub.id}?do=directions` : '',
     kind: stub.kind,
-    company: f?.company ?? '',
+    company: f?.company ?? stub.details?.find((d) => d.label === 'Company')?.value ?? '',
     flightNo: f?.flight ?? '',
     from: f?.from ?? '',
     to: f?.to ?? '',

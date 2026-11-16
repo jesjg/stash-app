@@ -1,6 +1,6 @@
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CodeView } from '../../components/CodeView';
-import { StayCard } from '../../components/StayCard';
+import { messageHost, openDirections, StayCard } from '../../components/StayCard';
 import { Icon } from '../../components/Icon';
 import { fitCode, WalletTicket } from '../../components/WalletTicket';
 import { RoundButton } from '../../components/RoundButton';
@@ -36,7 +36,7 @@ const SCREEN = '#FFFFFF';
 const INK = '#111111';
 
 export default function TicketScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, do: action } = useLocalSearchParams<{ id: string; do?: string }>();
   const all = useStore((s) => s.stubs);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -72,6 +72,19 @@ export default function TicketScreen() {
   // Which page is being torn (it splits in two for the animation).
   const [tearingAt, setTearingAt] = useState<number | null>(null);
   useKeepAwake();
+  // From the stay's lock screen card: Directions or Message, once the stay is on screen.
+  const acted = useRef<string | null>(null);
+  useEffect(() => {
+    const opened = all.find((x) => x.id === id);
+    if (!action || !opened || opened.kind !== 'stay' || acted.current === `${id}-${action}`) return;
+    acted.current = `${id}-${action}`;
+    const st = opened.stay ?? {};
+    const t = setTimeout(() => {
+      if (action === 'directions' && st.address) openDirections(st.address);
+      else if (action === 'message' && st.phone) messageHost(st.phone, st.host);
+    }, 450);
+    return () => clearTimeout(t);
+  }, [action, all, id]);
   useMaxBrightness(stub?.kind !== 'stay');
 
   if (!stub) {

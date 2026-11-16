@@ -91,6 +91,21 @@ async function logoImage(): Promise<string> {
   }
 }
 
+const COUNTRY = /^(indonesia|thailand|vietnam|malaysia|singapore|philippines|japan|greece|uk|united kingdom|england|scotland|wales|ireland|france|spain|italy|portugal|germany|austria|switzerland|netherlands|croatia|usa|united states|australia|new zealand|mexico|canada)$/i;
+
+/** "Jl. Lantang Hidung, 80227 Sanur, Indonesia" → "Sanur"; the town and region, not the street or postcode. */
+export function townOf(address?: string): string {
+  if (!address) return '';
+  let parts = address
+    .split(',')
+    .map((p) => p.replace(/\b\d{3,6}\b/g, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  if (parts.length >= 3) parts = parts.slice(1);
+  const notCountry = parts.filter((p) => !COUNTRY.test(p));
+  if (notCountry.length) parts = notCountry;
+  return parts.slice(-2).join(', ');
+}
+
 async function propsFor(stub: Stub) {
   const kind = KINDS.find((k) => k.id === stub.kind)?.label ?? 'Ticket';
   const n = stub.tickets.length;
@@ -98,8 +113,15 @@ async function propsFor(stub: Stub) {
   // Flights get their own card: airline, flight number, route, boarding, gate, seat and terminal.
   const f = stub.kind === 'flight' ? flightInfo(stub) : null;
   const seats = f?.seats.filter(Boolean) ?? [];
+  const st = stub.kind === 'stay' ? (stub.stay ?? {}) : null;
   return {
     logo: await logoImage(),
+    // Stays: where, check-in, the door code, and buttons that open Stash to message the host or get directions.
+    place: st ? townOf(st.address) : '',
+    checkIn: st ? (stub.time ?? '') : '',
+    doorCode: st?.doorCode ?? '',
+    messageUrl: st?.phone ? `stubs://ticket/${stub.id}?do=message` : '',
+    directionsUrl: st?.address ? `stubs://ticket/${stub.id}?do=directions` : '',
     kind: stub.kind,
     company: f?.company ?? '',
     flightNo: f?.flight ?? '',

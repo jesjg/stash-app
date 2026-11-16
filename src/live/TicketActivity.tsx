@@ -1,4 +1,4 @@
-import { Divider, HStack, Image, Spacer, Text, VStack } from '@expo/ui/swift-ui';
+import { Divider, HStack, Image, Link, Spacer, Text, VStack } from '@expo/ui/swift-ui';
 import {
   activityBackgroundTint,
   background,
@@ -30,7 +30,13 @@ export type TicketActivityProps = {
   code: string;
   /** file:// URL of the Stash app icon in the shared folder ('' if missing: a drawn S stands in). */
   logo: string;
-  /** The ticket type: flights get their own card. */
+  /** Stays only (empty otherwise): "Sanur, Bali", "14:00", "4821", and stubs:// links for the two buttons. */
+  place: string;
+  checkIn: string;
+  doorCode: string;
+  messageUrl: string;
+  directionsUrl: string;
+  /** The ticket type: flights and stays get their own cards. */
   kind: string;
   /** Flights only (empty otherwise): "Air New Zealand", "NZ 104", "SYD", "AKL", "13:55", "51", "23A", "I". */
   company: string;
@@ -53,6 +59,132 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
   const paper = env.isLuminanceReduced ? '#BBBBB5' : '#F4F4F0';
   const soft = '#B9B9B2';
   const hasCode = props.code.length > 0;
+
+  if (props.kind === 'stay') {
+    // The stay card: white, the name and town, then check-in, the door code and two buttons.
+    const ink = '#111111';
+    const grey = '#6B6B70';
+    const violet = '#9747FF';
+    const facts = [
+      ['CHECK-IN', props.checkIn],
+      ['DOOR CODE', props.doorCode],
+    ].filter((f) => f[1].length > 0);
+    const logoView =
+      props.logo.length > 0 ? (
+        <Image uiImage={props.logo} modifiers={[resizable(), frame({ width: 36, height: 36 }), cornerRadius(9)]} />
+      ) : (
+        <Text
+          modifiers={[
+            font({ size: 18, weight: 'heavy' }),
+            foregroundStyle('#FFFFFF'),
+            frame({ width: 36, height: 36 }),
+            background(violet, shapes.roundedRectangle({ cornerRadius: 9 })),
+          ]}
+        >
+          S
+        </Text>
+      );
+    return {
+      banner: (
+        <VStack
+          alignment="leading"
+          spacing={10}
+          modifiers={[
+            padding({ horizontal: 16, vertical: 12 }),
+            frame({ maxWidth: 1000, alignment: 'leading' }),
+            background('#FFFFFF'),
+            activityBackgroundTint('#FFFFFF'),
+          ]}
+        >
+          <HStack spacing={10}>
+            {logoView}
+            <VStack alignment="leading" spacing={0}>
+              <Text modifiers={[font({ size: 16, weight: 'bold' }), foregroundStyle(ink), lineLimit(1)]}>{props.title}</Text>
+              {props.place.length > 0 ? (
+                <Text modifiers={[font({ size: 13 }), foregroundStyle(grey), lineLimit(1)]}>{props.place}</Text>
+              ) : null}
+            </VStack>
+            <Spacer />
+            <Text
+              modifiers={[
+                font({ size: 13, weight: 'semibold' }),
+                foregroundStyle('#7A2EE6'),
+                lineLimit(1),
+                fixedSize({ horizontal: true }),
+                padding({ horizontal: 10, vertical: 5 }),
+                background('#F1E8FF', shapes.capsule()),
+              ]}
+            >
+              Today
+            </Text>
+          </HStack>
+          <HStack spacing={10} modifiers={[padding({ horizontal: 14, vertical: 8 }), background('#F2F2F4', shapes.roundedRectangle({ cornerRadius: 16 }))]}>
+            {facts.map((f, i) => (
+              <HStack key={f[0]} spacing={10}>
+                {i > 0 ? <Divider modifiers={[frame({ height: 30 })]} /> : null}
+                <VStack alignment="leading" spacing={1}>
+                  <Text modifiers={[font({ size: 10, weight: 'semibold' }), foregroundStyle(grey), kerning(0.8), lineLimit(1)]}>{f[0]}</Text>
+                  <Text modifiers={[font({ size: 20, weight: 'heavy' }), foregroundStyle(ink), lineLimit(1), minimumScaleFactor(0.6)]}>{f[1]}</Text>
+                </VStack>
+              </HStack>
+            ))}
+            <Spacer />
+            {props.messageUrl.length > 0 ? (
+              <Link destination={props.messageUrl}>
+                <Image
+                  systemName="bubble.left"
+                  size={18}
+                  color="#FFFFFF"
+                  modifiers={[frame({ width: 42, height: 42 }), background(violet, shapes.circle())]}
+                />
+              </Link>
+            ) : null}
+            {props.directionsUrl.length > 0 ? (
+              <Link destination={props.directionsUrl}>
+                <Image
+                  systemName="location"
+                  size={18}
+                  color="#FFFFFF"
+                  modifiers={[frame({ width: 42, height: 42 }), background(violet, shapes.circle())]}
+                />
+              </Link>
+            ) : null}
+          </HStack>
+        </VStack>
+      ),
+      compactLeading: (
+        <HStack spacing={4}>
+          {props.logo.length > 0 ? (
+            <Image uiImage={props.logo} modifiers={[resizable(), frame({ width: 18, height: 18 }), cornerRadius(5)]} />
+          ) : (
+            <Image systemName="bed.double.fill" color="#B07CFF" />
+          )}
+        </HStack>
+      ),
+      compactTrailing: (
+        <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle('#FFFFFF'), lineLimit(1)]}>
+          {[props.checkIn, props.doorCode.length > 0 ? `#${props.doorCode}` : ''].filter((x) => x.length > 0).join(' · ') || 'Check-in'}
+        </Text>
+      ),
+      minimal:
+        props.logo.length > 0 ? (
+          <Image uiImage={props.logo} modifiers={[resizable(), frame({ width: 20, height: 20 }), cornerRadius(5)]} />
+        ) : (
+          <Image systemName="bed.double.fill" color="#B07CFF" />
+        ),
+      expandedLeading: (
+        <Text modifiers={[font({ size: 16, weight: 'heavy' }), foregroundStyle('#F4F4F0'), lineLimit(1), padding({ leading: 8 })]}>{props.title}</Text>
+      ),
+      expandedTrailing: (
+        <Text modifiers={[font({ size: 15, weight: 'semibold' }), foregroundStyle('#B07CFF'), padding({ trailing: 8 })]}>{props.checkIn}</Text>
+      ),
+      expandedBottom: (
+        <Text modifiers={[font({ size: 14 }), foregroundStyle('#B9B9B2'), lineLimit(1), padding({ horizontal: 8, bottom: 8 })]}>
+          {[props.place, props.doorCode.length > 0 ? `Door code ${props.doorCode}` : ''].filter((x) => x.length > 0).join(' · ')}
+        </Text>
+      ),
+    };
+  }
 
   if (props.kind === 'flight') {
     // The flight card: white, the airline and flight number, the route, then boarding, gate, seat, terminal.

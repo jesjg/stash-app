@@ -41,7 +41,7 @@ export function openDirections(address: string) {
 
 const copy = (text: string, what = 'Copied') => copyText(text).then((how) => how === 'copied' && showToast(what));
 
-function messageHost(phone: string, host?: string) {
+export function messageHost(phone: string, host?: string) {
   const num = phone.replace(/[^\d+]/g, '');
   const actions = [
     () => Linking.openURL(`https://wa.me/${num.replace(/^\+/, '')}`),

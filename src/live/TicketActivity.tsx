@@ -65,6 +65,7 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
       ['TERMINAL', props.terminal],
     ].filter((f) => f[1].length > 0);
     const route = props.from.length > 0 && props.to.length > 0;
+    const soon = props.boardsAt > Date.now();
     const dashes = '- - - - - - - - - - - - - - -';
     return {
       banner: (
@@ -104,10 +105,19 @@ const TicketActivity = (props: TicketActivityProps, env: LiveActivityEnvironment
             </VStack>
             <Spacer />
             <HStack spacing={4} modifiers={[padding({ horizontal: 10, vertical: 5 }), background('#E8F1FF', shapes.capsule())]}>
-              {/* A fixed time: iOS's live countdown always shows seconds under an hour. */}
-              <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue), lineLimit(1)]}>
-                {props.boarding.length > 0 ? `Boards at ${props.boarding}` : props.when}
-              </Text>
+              {/* Live countdown. iOS shows minutes and seconds under an hour; minutes only needs a native change (next build). */}
+              {soon ? <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue)]}>Boards in</Text> : null}
+              {soon ? (
+                <Text
+                  date={new Date(props.boardsAt)}
+                  dateStyle="relative"
+                  modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue), lineLimit(1)]}
+                />
+              ) : (
+                <Text modifiers={[font({ size: 13, weight: 'semibold' }), foregroundStyle(blue), lineLimit(1)]}>
+                  {props.boarding.length > 0 ? `Boarding ${props.boarding}` : props.when}
+                </Text>
+              )}
             </HStack>
           </HStack>
           {route ? (
